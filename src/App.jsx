@@ -2929,74 +2929,85 @@ export default function App() {
   const [league, setLeague] = useState("PL");
 
   return (
-    <div style={{ background:"#07080e",minHeight:"100vh",color:"#ccc",fontFamily:"'Noto Sans JP','IBM Plex Mono',monospace",padding:"20px 14px" }}>
+    <div style={{ background:"#07080e",minHeight:"100vh",color:"#ccc",fontFamily:"'Noto Sans JP','IBM Plex Mono',monospace" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=IBM+Plex+Mono:wght@400;700&family=Bebas+Neue&display=swap');
         *{box-sizing:border-box}
-        button{transition:all .12s}
-        button:hover{opacity:.85}
+        button{transition:all .15s;cursor:pointer}
+        button:hover{opacity:.8}
       `}</style>
 
-      {/* Master header */}
-      <div style={{ textAlign:"center",marginBottom:20 }}>
-        <div style={{ fontFamily:"'Bebas Neue'",fontSize:32,letterSpacing:5,color:"#fff",lineHeight:1 }}>
+      {/* Accent top bar */}
+      <div style={{ height:3,background:"linear-gradient(90deg,#9B5DE5 0%,#4A90D9 50%,#00C9A0 100%)" }} />
+
+      {/* Header */}
+      <div style={{ textAlign:"center",padding:"22px 14px 18px",borderBottom:"1px solid #0e1420" }}>
+        <div style={{ fontFamily:"'Bebas Neue'",fontSize:38,letterSpacing:7,color:"#fff",lineHeight:1 }}>
           FOOTBALL STATS HUB
         </div>
-        <div style={{ fontSize:10,color:"#444",letterSpacing:3,marginTop:4 }}>
+        <div style={{ fontSize:10,color:"#2e3d50",letterSpacing:4,marginTop:6,textTransform:"uppercase" }}>
           W杯 / UEFA / OPTA / TOP 5 LEAGUES
         </div>
       </div>
 
-      {/* Top-level tabs */}
-      <div style={{ display:"flex",justifyContent:"center",gap:8,marginBottom:18,flexWrap:"wrap" }}>
-        {TOP_TABS.map(t => (
-          <button key={t.key} onClick={() => setTopTab(t.key)} style={{
-            background: topTab===t.key ? "linear-gradient(135deg, #9B5DE5, #4A90D9)" : "#0e0e18",
-            color: topTab===t.key ? "#fff" : "#666",
-            border:`1px solid ${topTab===t.key?"#7C4DFF":"#222"}`,
-            borderRadius:4,padding:"10px 18px",fontSize:12,cursor:"pointer",
-            fontFamily:"'Noto Sans JP',sans-serif",fontWeight:topTab===t.key?700:400,
-            display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:140,
-          }}>
-            <span>{t.label}</span>
-            <span style={{ fontSize:9, opacity:0.7 }}>{t.desc}</span>
-          </button>
-        ))}
-      </div>
+      <div style={{ maxWidth:1200,margin:"0 auto",padding:"0 14px" }}>
 
-      {/* Section title */}
-      <div style={{ textAlign:"center",marginBottom:16 }}>
-        <div style={{ fontSize:20,fontWeight:700,color:"#fff",letterSpacing:2,fontFamily:"'Bebas Neue'" }}>
-          {TOP_TABS.find(t => t.key === topTab)?.label}
+        {/* Top-level tabs — underline style */}
+        <div style={{ display:"flex",justifyContent:"center",borderBottom:"1px solid #0e1420",marginBottom:0 }}>
+          {TOP_TABS.map(t => {
+            const on = topTab === t.key;
+            return (
+              <button key={t.key} onClick={() => setTopTab(t.key)} style={{
+                background:"transparent",
+                color: on ? "#c8d8ff" : "#3a4a5a",
+                border:"none",
+                borderBottom: on ? "2px solid #7C4DFF" : "2px solid transparent",
+                padding:"13px 22px 11px",
+                fontSize:12,
+                fontFamily:"'Noto Sans JP',sans-serif",
+                fontWeight: on ? 700 : 400,
+                display:"flex",flexDirection:"column",alignItems:"center",gap:3,
+              }}>
+                <span>{t.label}</span>
+                <span style={{ fontSize:9,opacity:0.55 }}>{t.desc}</span>
+              </button>
+            );
+          })}
         </div>
+
+        <div style={{ padding:"24px 0" }}>
+          {topTab === "wc"   && <WorldCupView />}
+          {topTab === "uefa" && <UefaView />}
+          {topTab === "opta" && <OptaView />}
+          {topTab === "big5" && (
+            <>
+              {/* League sub-tabs — underline style */}
+              <div style={{ display:"flex",justifyContent:"center",borderBottom:"1px solid #0e1420",marginBottom:22 }}>
+                {LEAGUE_KEYS.map(k => {
+                  const cfg = LEAGUE_CONFIG[k];
+                  const on = league === k;
+                  return (
+                    <button key={k} onClick={() => setLeague(k)} style={{
+                      background:"transparent",
+                      color: on ? "#fff" : "#3a4a5a",
+                      border:"none",
+                      borderBottom: on ? `2px solid ${cfg.color}` : "2px solid transparent",
+                      padding:"8px 18px 6px",
+                      fontSize:11,
+                      fontFamily:"'Noto Sans JP',sans-serif",
+                      fontWeight: on ? 700 : 400,
+                    }}>{cfg.label}</button>
+                  );
+                })}
+              </div>
+              <LeagueHistoryView key={league} leagueKey={league} />
+            </>
+          )}
+        </div>
+
       </div>
 
-      {topTab === "wc"   && <WorldCupView />}
-      {topTab === "uefa" && <UefaView />}
-      {topTab === "opta" && <OptaView />}
-      {topTab === "big5" && (
-        <>
-          {/* Sub-tabs for big5 */}
-          <div style={{ display:"flex",justifyContent:"center",gap:6,marginBottom:18,flexWrap:"wrap" }}>
-            {LEAGUE_KEYS.map(k => {
-              const cfg = LEAGUE_CONFIG[k];
-              const on = league === k;
-              return (
-                <button key={k} onClick={() => setLeague(k)} style={{
-                  background: on ? cfg.color : "#0e0e18",
-                  color: on ? "#000" : "#666",
-                  border:`1px solid ${on?cfg.color:"#222"}`,
-                  borderRadius:3,padding:"6px 14px",fontSize:11,cursor:"pointer",
-                  fontFamily:"'Noto Sans JP',sans-serif",fontWeight:on?700:400,
-                }}>{cfg.label}</button>
-              );
-            })}
-          </div>
-          <LeagueHistoryView key={league} leagueKey={league} />
-        </>
-      )}
-
-      <div style={{ textAlign:"center",fontSize:9,color:"#252535",marginTop:30,lineHeight:1.8 }}>
+      <div style={{ textAlign:"center",fontSize:9,color:"#151525",paddingBottom:24,lineHeight:1.8 }}>
         統合フットボール統計アプリ — UEFA国別係数 / Optaパワーランキング / 5大リーグ歴代順位
       </div>
     </div>
