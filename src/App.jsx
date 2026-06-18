@@ -1,5 +1,6 @@
 ﻿import { useState, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import JLeagueHub from "./JLeagueHub";
 
 // =============================================================
 // === DATA BLOCKS (will be injected here) ===
@@ -2918,10 +2919,13 @@ function OptaView() {
 // =============================================================
 
 const TOP_TABS = [
-  { key:"wc",   label:"ワールドカップ",      desc:"W杯重み付きスコア" },
-  { key:"uefa", label:"カントリーランキング", desc:"UEFA国別係数" },
-  { key:"opta", label:"パワーランキング v2", desc:"Optaクラブ実力" },
-  { key:"big5", label:"5大リーグ歴代順位",   desc:"プレミア・ラリーガ他" },
+  { key:"wc",      label:"ワールドカップ",      desc:"W杯重み付きスコア" },
+  { key:"uefa",    label:"カントリーランキング", desc:"UEFA国別係数" },
+  { key:"opta",    label:"パワーランキング v2", desc:"Optaクラブ実力" },
+  { key:"big5",    label:"5大リーグ歴代順位",   desc:"プレミア・ラリーガ他" },
+  { key:"jleague", label:"Jリーグ",            desc:"J1/J2/J3 歴代順位" },
+  { key:"goat",    label:"GOATダッシュボード", desc:"11選手キャリア比較" },
+  { key:"managers",label:"名将系譜",           desc:"師弟・影響関係図" },
 ];
 
 export default function App() {
@@ -2929,60 +2933,62 @@ export default function App() {
   const [league, setLeague] = useState("PL");
 
   return (
-    <div style={{ background:"#07080e",minHeight:"100vh",color:"#ccc",fontFamily:"'Noto Sans JP','IBM Plex Mono',monospace" }}>
+    <div style={{ background:"#1c2a40",minHeight:"100vh",color:"#d4e6f8",fontFamily:"'Noto Sans JP','IBM Plex Mono',monospace" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=IBM+Plex+Mono:wght@400;700&family=Bebas+Neue&display=swap');
         *{box-sizing:border-box}
-        button{transition:all .15s;cursor:pointer}
-        button:hover{opacity:.8}
+        button{transition:all .2s;cursor:pointer}
+        button:hover{filter:brightness(1.18)}
       `}</style>
 
       {/* Accent top bar */}
-      <div style={{ height:3,background:"linear-gradient(90deg,#9B5DE5 0%,#4A90D9 50%,#00C9A0 100%)" }} />
+      <div style={{ height:4,background:"linear-gradient(90deg,#9B5DE5 0%,#4A90D9 40%,#00C9A0 75%,#FFD700 100%)" }} />
 
       {/* Header */}
-      <div style={{ textAlign:"center",padding:"22px 14px 18px",borderBottom:"1px solid #0e1420" }}>
-        <div style={{ fontFamily:"'Bebas Neue'",fontSize:38,letterSpacing:7,color:"#fff",lineHeight:1 }}>
+      <div style={{ textAlign:"center",padding:"32px 14px 28px",borderBottom:"1px solid #2a3d5a",background:"linear-gradient(180deg,#0f1a2e 0%,#1c2a40 100%)" }}>
+        <div style={{ fontFamily:"'Bebas Neue'",fontSize:48,letterSpacing:10,color:"#fff",lineHeight:1 }}>
           FOOTBALL STATS HUB
         </div>
-        <div style={{ fontSize:10,color:"#2e3d50",letterSpacing:4,marginTop:6,textTransform:"uppercase" }}>
-          W杯 / UEFA / OPTA / TOP 5 LEAGUES
+        <div style={{ fontSize:11,color:"#6080a8",letterSpacing:5,marginTop:10,textTransform:"uppercase" }}>
+          W杯 / UEFA / OPTA / TOP 5 LEAGUES / Jリーグ
         </div>
       </div>
 
       <div style={{ maxWidth:1200,margin:"0 auto",padding:"0 14px" }}>
 
-        {/* Top-level tabs — underline style */}
-        <div style={{ display:"flex",justifyContent:"center",borderBottom:"1px solid #0e1420",marginBottom:0 }}>
+        {/* Top-level tabs */}
+        <div style={{ display:"flex",justifyContent:"center",flexWrap:"wrap",gap:4,padding:"14px 14px 0",background:"#111d30",borderBottom:"1px solid #2a3d5a",marginBottom:0 }}>
           {TOP_TABS.map(t => {
             const on = topTab === t.key;
             return (
               <button key={t.key} onClick={() => setTopTab(t.key)} style={{
-                background:"transparent",
-                color: on ? "#c8d8ff" : "#3a4a5a",
-                border:"none",
-                borderBottom: on ? "2px solid #7C4DFF" : "2px solid transparent",
-                padding:"13px 22px 11px",
+                background: on ? "linear-gradient(135deg,#7C4DFF 0%,#3d8fe0 100%)" : "#1a2a40",
+                color: on ? "#fff" : "#7090b8",
+                border: on ? "none" : "1px solid #2a3d5a",
+                borderRadius:"8px 8px 0 0",
+                padding:"11px 20px 9px",
                 fontSize:12,
                 fontFamily:"'Noto Sans JP',sans-serif",
                 fontWeight: on ? 700 : 400,
-                display:"flex",flexDirection:"column",alignItems:"center",gap:3,
+                display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+                boxShadow: on ? "0 -2px 14px rgba(124,77,255,0.35)" : "none",
+                marginBottom: on ? -1 : 0,
               }}>
                 <span>{t.label}</span>
-                <span style={{ fontSize:9,opacity:0.55 }}>{t.desc}</span>
+                <span style={{ fontSize:9,opacity: on ? 0.85 : 0.55 }}>{t.desc}</span>
               </button>
             );
           })}
         </div>
 
-        <div style={{ padding:"24px 0" }}>
+        <div style={{ padding:"28px 0" }}>
           {topTab === "wc"   && <WorldCupView />}
           {topTab === "uefa" && <UefaView />}
           {topTab === "opta" && <OptaView />}
           {topTab === "big5" && (
             <>
               {/* League sub-tabs — underline style */}
-              <div style={{ display:"flex",justifyContent:"center",borderBottom:"1px solid #0e1420",marginBottom:22 }}>
+              <div style={{ display:"flex",justifyContent:"center",borderBottom:"1px solid #2a3d5a",marginBottom:22 }}>
                 {LEAGUE_KEYS.map(k => {
                   const cfg = LEAGUE_CONFIG[k];
                   const on = league === k;
@@ -3003,12 +3009,15 @@ export default function App() {
               <LeagueHistoryView key={league} leagueKey={league} />
             </>
           )}
+          {topTab === "jleague" && <JLeagueHub />}
+          {topTab === "goat" && <iframe src="/football/cr7.html" style={{width:"100%",height:"85vh",border:"none"}} />}
+          {topTab === "managers" && <iframe src="/football/managers.html" style={{width:"100%",height:"85vh",border:"none"}} />}
         </div>
 
       </div>
 
-      <div style={{ textAlign:"center",fontSize:9,color:"#151525",paddingBottom:24,lineHeight:1.8 }}>
-        統合フットボール統計アプリ — UEFA国別係数 / Optaパワーランキング / 5大リーグ歴代順位
+      <div style={{ textAlign:"center",fontSize:9,color:"#4a6888",paddingBottom:28,lineHeight:1.8 }}>
+        統合フットボール統計アプリ — UEFA国別係数 / Optaパワーランキング / 5大リーグ歴代順位 / Jリーグ / GOATダッシュボード / 名将系譜
       </div>
     </div>
   );

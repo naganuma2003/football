@@ -1,0 +1,3795 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CR7 — Ultimate Career Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Archivo+Black&family=Oswald:wght@400;600;700&family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- No external chart library; using inline SVG for guaranteed offline support -->
+<style>
+:root {
+  --bg: #08080a;
+  --bg-elev: #111114;
+  --bg-card: #141417;
+  --ink: #f5f5f0;
+  --ink-dim: #8a8a85;
+  --ink-faint: #5a5a55;
+  --gold: #c9a14a;
+  --gold-bright: #e8c468;
+  --red: #c8102e;
+  --green: #006a44;
+  --blue: #003594;
+  --line: rgba(245,245,240,0.06);
+  --line-strong: rgba(245,245,240,0.14);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+/* Noise + atmosphere */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 1000;
+  opacity: 0.035; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: -1;
+  background:
+    radial-gradient(ellipse at 20% -10%, rgba(201,161,74,0.12), transparent 50%),
+    radial-gradient(ellipse at 100% 110%, rgba(200,16,46,0.08), transparent 50%);
+}
+.wrap { max-width: 1320px; margin: 0 auto; padding: 24px 24px 80px; }
+
+/* ============ VIEW MODE SWITCHER (top-level) ============ */
+.view-mode-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--bg-elev);
+}
+.vm-btn {
+  flex: 1;
+  padding: 18px 24px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  border-right: 1px solid var(--line-strong);
+  position: relative;
+  overflow: hidden;
+}
+.vm-btn:last-child { border-right: none; }
+.vm-btn:hover { background: rgba(255,255,255,0.03); }
+.vm-btn.active {
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-bright) 100%);
+  color: #000;
+}
+.vm-btn.active::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 100% 0%, rgba(0,0,0,0.15), transparent 60%);
+}
+.vm-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  position: relative;
+}
+.vm-btn.active .vm-num { color: rgba(0,0,0,0.6); }
+.vm-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+  color: var(--ink);
+  position: relative;
+}
+.vm-btn.active .vm-title { color: #000; }
+.vm-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 1px;
+  position: relative;
+  margin-top: 2px;
+}
+.vm-btn.active .vm-sub { color: rgba(0,0,0,0.55); }
+
+/* View containers */
+.view-container { display: none; }
+.view-container.active { display: block; }
+
+/* ============ PLAYER SWITCHER ============ */
+.player-switcher {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+  padding: 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.player-switcher::-webkit-scrollbar { height: 4px; }
+.player-switcher::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }
+.pswitch {
+  flex-shrink: 0;
+  min-width: 90px;
+  padding: 10px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Oswald', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.pswitch:hover { background: rgba(255,255,255,0.04); }
+.pswitch.active {
+  background: var(--player-accent, var(--gold));
+  color: #000;
+  border-color: var(--player-accent, var(--gold));
+}
+.pswitch-flag { font-size: 18px; line-height: 1; }
+.pswitch-name {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pswitch.active .pswitch-name { color: #000; font-weight: 700; }
+.pswitch-goals {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 16px;
+  color: var(--ink);
+  letter-spacing: -0.5px;
+}
+.pswitch.active .pswitch-goals { color: #000; }
+
+/* ============ TOPBAR ============ */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 18px; border-bottom: 1px solid var(--line);
+  margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 40px; height: 40px;
+  background: var(--gold); color: #000;
+  display: grid; place-items: center;
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 16px; letter-spacing: -1px;
+  border-radius: 2px; transform: rotate(-4deg);
+}
+.brand-text {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px; letter-spacing: 2px;
+}
+.topbar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--gold); color: var(--gold); }
+.btn-primary { background: var(--gold); color: #000; border-color: var(--gold); }
+.btn-primary:hover { background: var(--gold-bright); color: #000; }
+.btn .spinner {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: spin 0.8s linear infinite;
+  vertical-align: -1px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.last-updated {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-dim);
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.last-updated .dot {
+  display: inline-block; width: 6px; height: 6px;
+  background: #4ade80; border-radius: 50%;
+  margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ============ TABS ============ */
+.tabs {
+  display: flex; gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 32px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 12px 18px;
+  background: transparent; color: var(--ink-dim);
+  border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.tab-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--ink-faint);
+  margin-right: 6px;
+}
+.tab.active .tab-num { color: var(--gold); }
+
+/* ============ PANEL ============ */
+.panel { display: none; }
+.panel.active { display: block; animation: fadeIn 0.5s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ============ OVERVIEW: PLAYER CARD ============ */
+.overview-grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+}
+@media (max-width: 900px) {
+  .overview-grid { grid-template-columns: 1fr; }
+}
+
+/* FIFA-style Player Card */
+.player-card {
+  position: relative;
+  aspect-ratio: 5 / 7;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(232,196,104,0.4) 0%, transparent 60%),
+    linear-gradient(155deg, #2a2010 0%, #0d0a05 100%);
+  border: 1px solid var(--gold);
+  border-radius: 14px;
+  padding: 24px 22px 22px;
+  overflow: hidden;
+  box-shadow:
+    0 30px 60px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.player-card::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px; right: -1px; bottom: -1px;
+  background: linear-gradient(135deg, var(--gold-bright), transparent 30%, transparent 70%, var(--gold) 100%);
+  z-index: -1; border-radius: 14px;
+  opacity: 0.5;
+}
+.card-shine {
+  position: absolute;
+  top: 0; left: -50%;
+  width: 50%; height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(255,255,255,0.08), transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
+  animation: shine 6s ease-in-out infinite;
+}
+@keyframes shine {
+  0%, 100% { left: -60%; }
+  50% { left: 120%; }
+}
+
+.pc-top {
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.pc-overall {
+  display: flex; flex-direction: column;
+  align-items: flex-start; line-height: 1;
+}
+.pc-rating {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 64px;
+  color: var(--gold-bright);
+  letter-spacing: -3px;
+  line-height: 0.85;
+}
+.pc-pos {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: var(--gold-bright);
+  letter-spacing: 3px;
+  margin-top: 4px;
+}
+.pc-flag {
+  font-size: 32px;
+  margin-top: 8px;
+}
+.pc-club-badge {
+  display: flex; flex-direction: column; align-items: flex-end;
+}
+.pc-club {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px; letter-spacing: 2px;
+  color: var(--gold);
+  text-align: right;
+}
+.pc-shirt {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 48px;
+  color: rgba(255,255,255,0.12);
+  letter-spacing: -2px;
+  margin-top: 4px;
+}
+
+.pc-portrait {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 92px;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.5));
+}
+.pc-name {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 28px;
+  letter-spacing: -1px;
+  text-align: center;
+  margin-top: -8px;
+  color: var(--ink);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  text-transform: uppercase;
+}
+.pc-nickname {
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--gold-bright);
+  letter-spacing: 4px;
+  margin-top: 2px;
+}
+
+.pc-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 18px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(232,196,104,0.25);
+}
+.pc-stat {
+  display: flex; justify-content: space-between;
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+.pc-stat-label { color: var(--ink-dim); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+.pc-stat-val { color: var(--gold-bright); font-weight: 700; }
+.pc-foot-info {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(232,196,104,0.25);
+  display: flex; justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-dim);
+  letter-spacing: 1px;
+}
+
+/* Overview right side */
+.overview-right { display: flex; flex-direction: column; gap: 18px; }
+
+.big-counter {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+  border: 1px solid var(--line-strong);
+  padding: 28px 28px 24px;
+  position: relative; overflow: hidden;
+}
+.big-counter::before {
+  content: '';
+  position: absolute; top: 0; right: 0;
+  width: 240px; height: 240px;
+  background: radial-gradient(circle, rgba(201,161,74,0.18), transparent 70%);
+}
+.bc-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-dim);
+  letter-spacing: 2px; text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.bc-row { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+.bc-number {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: clamp(72px, 11vw, 128px);
+  line-height: 1;
+  letter-spacing: -4px;
+}
+.bc-suffix {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 24px; letter-spacing: 3px;
+  color: var(--gold);
+}
+.bc-foot {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 600px) { .bc-foot { grid-template-columns: repeat(2, 1fr); } }
+.bc-foot-item { display: flex; flex-direction: column; gap: 2px; }
+.bc-foot-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--ink-dim);
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+.bc-foot-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+}
+
+.progress-card {
+  background: linear-gradient(135deg, #c9a14a 0%, #8b6c2a 100%);
+  color: #0a0a0a;
+  padding: 24px 24px;
+  position: relative; overflow: hidden;
+}
+.progress-card::before {
+  content: '1000';
+  position: absolute; top: -16px; right: -10px;
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 140px; color: rgba(0,0,0,0.08);
+  line-height: 1; letter-spacing: -6px;
+}
+.pc-lab {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; opacity: 0.7;
+  position: relative;
+}
+.pc-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 26px;
+  letter-spacing: -1px;
+  margin-top: 4px;
+  position: relative;
+}
+.pc-bar-wrap {
+  margin-top: 16px;
+  height: 8px;
+  background: rgba(0,0,0,0.2);
+  position: relative;
+  overflow: hidden;
+}
+.pc-bar {
+  height: 100%; background: #0a0a0a;
+  width: 0%;
+  transition: width 1.6s cubic-bezier(.2,.8,.2,1);
+}
+.pc-stats-row {
+  display: flex; justify-content: space-between;
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 1px;
+}
+.pc-stats-row strong {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 18px; letter-spacing: 0;
+  display: block; margin-top: 2px;
+}
+
+/* ============ SECTION ============ */
+.section { margin-top: 56px; }
+.section-head {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  margin-bottom: 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap; gap: 8px;
+}
+.section-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--gold);
+  letter-spacing: 2px;
+}
+.section-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: clamp(24px, 3.5vw, 36px);
+  letter-spacing: -1px; line-height: 1;
+  margin-top: 6px;
+}
+.section-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-dim);
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+
+/* ============ CLUB CARDS ============ */
+.clubs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1px;
+  background: var(--line-strong);
+  border: 1px solid var(--line-strong);
+}
+.club {
+  background: var(--bg-elev);
+  padding: 22px 20px;
+  position: relative;
+  transition: all 0.3s;
+  overflow: hidden;
+}
+.club:hover { background: #1c1c1c; transform: translateY(-2px); }
+.club-stripe { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.club-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px; letter-spacing: 2px;
+  margin-top: 8px;
+}
+.club-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--gold);
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+.club-period {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-dim);
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  margin-top: 4px;
+}
+.club-stats {
+  display: flex; align-items: baseline; gap: 16px;
+}
+.club-stat { flex: 1; }
+.club-stat-num {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 36px;
+  letter-spacing: -1.5px;
+  line-height: 1;
+}
+.club-stat-num.assist { color: var(--gold); font-size: 22px; }
+.club-stat-lab {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-dim);
+  letter-spacing: 1.5px;
+  margin-top: 4px;
+}
+.club-apps {
+  margin-top: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-dim);
+}
+.club-apps strong { color: var(--ink); }
+
+/* ============ COMPETITION TABLE ============ */
+.comp-filter {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 20px;
+}
+.comp-chip {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px; letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid var(--line-strong);
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.comp-chip:hover { color: var(--ink); }
+.comp-chip.active { background: var(--gold); color: #000; border-color: var(--gold); }
+
+.comp-list {
+  display: flex; flex-direction: column;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line-strong);
+}
+.comp-row {
+  background: var(--bg-elev);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 24px 1fr auto auto auto;
+  gap: 20px;
+  align-items: center;
+  transition: background 0.2s;
+}
+.comp-row:hover { background: #1a1a1d; }
+.comp-bar-bg {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: var(--comp-color);
+  opacity: 0.08;
+  width: var(--bar-width);
+  z-index: 0;
+  transition: width 1.2s cubic-bezier(.2,.8,.2,1);
+}
+.comp-row { position: relative; }
+.comp-row > * { position: relative; z-index: 1; }
+.comp-rank {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: 1px;
+}
+.comp-info { display: flex; flex-direction: column; gap: 2px; }
+.comp-name {
+  font-family: 'Oswald', sans-serif;
+  font-size: 15px; font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.comp-note {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--gold);
+  letter-spacing: 1px;
+}
+.comp-apps {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--ink-dim);
+  letter-spacing: 1px;
+  min-width: 60px;
+  text-align: right;
+}
+.comp-ratio {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--ink-dim);
+  letter-spacing: 1px;
+  min-width: 56px;
+  text-align: right;
+}
+.comp-goals {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 26px;
+  letter-spacing: -1px;
+  min-width: 60px; text-align: right;
+  line-height: 1;
+}
+@media (max-width: 700px) {
+  .comp-row {
+    grid-template-columns: 20px 1fr auto auto;
+    gap: 12px; padding: 14px 16px;
+  }
+  .comp-apps { display: none; }
+  .comp-goals { font-size: 22px; }
+}
+
+/* ============ CHART CONTAINER ============ */
+.chart-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--line-strong);
+  padding: 24px;
+  position: relative;
+}
+.chart-toggles {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-bottom: 18px;
+}
+.tog {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px; letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; gap: 6px;
+}
+.tog:hover { color: var(--ink); }
+.tog.active { color: var(--ink); border-color: var(--gold); background: rgba(201,161,74,0.08); }
+.tog .swatch {
+  display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+}
+.chart-wrap { position: relative; height: 420px; }
+@media (max-width: 700px) { .chart-wrap { height: 320px; } }
+
+/* ============ RECORD GRID ============ */
+.records {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.record {
+  border: 1px solid var(--line-strong);
+  padding: 18px 16px;
+  transition: all 0.3s;
+}
+.record:hover { border-color: var(--gold); transform: translateY(-2px); }
+.record-val {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 36px;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  color: var(--gold);
+}
+.record-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-dim);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+/* ============ MOMENTS TIMELINE ============ */
+.moments {
+  display: flex; flex-direction: column;
+  border-left: 1px solid var(--line-strong);
+  margin-left: 12px;
+  padding-left: 24px;
+  position: relative;
+}
+.moment {
+  position: relative;
+  padding: 12px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.moment::before {
+  content: '';
+  position: absolute;
+  left: -30px; top: 50%;
+  transform: translateY(-50%);
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--gold);
+}
+.moment-info { flex: 1; }
+.moment-year {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 22px;
+  letter-spacing: -1px;
+  color: var(--gold);
+  line-height: 1;
+}
+.moment-event {
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  color: var(--ink);
+  margin-top: 2px;
+}
+.moment-goals {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+/* ============ DRILLDOWN (comp expand) ============ */
+.comp-row { cursor: pointer; user-select: none; }
+.comp-row:hover { background: #1a1a1d; }
+.comp-row.expanded { background: #1c1c20; }
+.comp-row .chevron {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--ink-faint);
+  transition: transform 0.3s;
+}
+.comp-row.expanded .chevron { transform: rotate(180deg); color: var(--gold); }
+
+.comp-drill {
+  background: #0e0e10;
+  border-bottom: 1px solid var(--line-strong);
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(.2,.8,.2,1);
+}
+.comp-drill.open { max-height: 800px; }
+.comp-drill-inner {
+  padding: 22px 24px 26px;
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+}
+@media (max-width: 800px) {
+  .comp-drill-inner { grid-template-columns: 1fr; }
+}
+.drill-chart-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  padding: 16px;
+  position: relative;
+  min-height: 260px;
+}
+.drill-meta {
+  display: flex; flex-direction: column;
+  gap: 14px;
+}
+.drill-meta-item {
+  border-left: 2px solid var(--comp-c, var(--gold));
+  padding: 6px 0 6px 14px;
+}
+.drill-meta-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-dim);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.drill-meta-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: var(--ink);
+  margin-top: 2px;
+  letter-spacing: 1px;
+}
+.drill-best {
+  background: linear-gradient(135deg, rgba(201,161,74,0.15), transparent);
+  border: 1px solid rgba(201,161,74,0.3);
+  padding: 14px;
+  border-radius: 4px;
+}
+.drill-best-lab {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--gold);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.drill-best-val {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 28px;
+  color: var(--gold-bright);
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-top: 4px;
+}
+.drill-best-when {
+  font-family: 'Oswald', sans-serif;
+  font-size: 12px;
+  color: var(--ink);
+  margin-top: 4px;
+}
+.drill-no-data {
+  display: flex; align-items: center; justify-content: center;
+  height: 220px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ============ ASSIST KINGS VIEW ============ */
+.assist-hero {
+  position: relative;
+  padding: 48px 36px 36px;
+  margin-bottom: 24px;
+  background:
+    radial-gradient(ellipse at 0% 100%, rgba(117,170,219,0.18), transparent 50%),
+    radial-gradient(ellipse at 100% 0%, rgba(201,161,74,0.12), transparent 50%),
+    linear-gradient(135deg, #1a1a1d 0%, #0d0d10 100%);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.assist-hero::before {
+  content: '👑';
+  position: absolute;
+  top: 20px; right: 50px;
+  font-size: 100px;
+  line-height: 1;
+  opacity: 0.06;
+  filter: grayscale(0.4);
+}
+.ah-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: 3px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ah-num::before {
+  content: '';
+  width: 32px; height: 1px;
+  background: var(--gold);
+}
+.ah-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: clamp(36px, 6vw, 72px);
+  letter-spacing: -2px;
+  line-height: 0.95;
+  margin-bottom: 16px;
+  position: relative;
+}
+.ah-title .ah-em {
+  color: #75aadb;
+  font-style: italic;
+  font-size: 0.85em;
+}
+.ah-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-dim);
+  letter-spacing: 2px;
+  position: relative;
+}
+
+.ak-controls {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-strong);
+}
+
+/* Ranking list */
+.ak-ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line-strong);
+  margin-bottom: 32px;
+}
+.ak-row {
+  background: var(--bg-elev);
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: 60px 32px 1fr auto;
+  gap: 20px;
+  align-items: center;
+  position: relative;
+  transition: all 0.3s;
+}
+.ak-row:hover { background: #1a1a1d; }
+.ak-row.clickable { cursor: pointer; }
+.ak-row.clickable:hover { transform: translateX(4px); }
+.ak-row .ak-rank {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 28px;
+  letter-spacing: -1px;
+  color: var(--ink-faint);
+  line-height: 1;
+}
+.ak-row.gold .ak-rank { color: #e8c468; }
+.ak-row.silver .ak-rank { color: #c0c0c0; }
+.ak-row.bronze .ak-rank { color: #cd7f32; }
+.ak-row .ak-flag { font-size: 28px; }
+.ak-row .ak-info { display: flex; flex-direction: column; gap: 4px; }
+.ak-row .ak-name {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+}
+.ak-row .ak-clubs {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-dim);
+  letter-spacing: 1px;
+}
+.ak-row .ak-highlight {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  color: var(--gold);
+  margin-top: 2px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.ak-row .ak-stats {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 20px;
+  text-align: right;
+}
+.ak-stat-block { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.ak-stat-num {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 28px;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.ak-stat-num.assist { color: #75aadb; }
+.ak-stat-num.goal { color: var(--gold); }
+.ak-stat-num.ga { color: #e8c468; }
+.ak-stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-dim);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.ak-row .ak-link {
+  position: absolute;
+  top: 12px; right: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--gold);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: rgba(201,161,74,0.1);
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(201,161,74,0.3);
+}
+
+/* Background bar showing ratio */
+.ak-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: var(--ak-bar, 0%);
+  background: linear-gradient(90deg, rgba(117,170,219,0.06), transparent);
+  pointer-events: none;
+  z-index: 0;
+  transition: width 1s cubic-bezier(.2,.8,.2,1);
+}
+.ak-row > * { position: relative; z-index: 1; }
+
+@media (max-width: 800px) {
+  .ak-row {
+    grid-template-columns: 40px 24px 1fr;
+    gap: 12px;
+    padding: 16px;
+  }
+  .ak-row .ak-stats {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--line);
+    padding-top: 12px;
+    margin-top: 8px;
+  }
+  .ak-stat-block { align-items: center; }
+}
+
+/* Honorable mentions */
+.ak-honors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.ak-honor {
+  background: var(--bg-elev);
+  border: 1px solid var(--line-strong);
+  padding: 14px 16px;
+  border-left: 3px solid #75aadb;
+  transition: all 0.3s;
+}
+.ak-honor:hover { transform: translateY(-2px); border-color: var(--gold); }
+.ak-honor-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.ak-honor-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px;
+  letter-spacing: 1.5px;
+}
+.ak-honor-flag { font-size: 16px; }
+.ak-honor-stats {
+  display: flex; gap: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.ak-honor-a { color: #75aadb; font-weight: 700; }
+.ak-honor-g { color: var(--gold); font-weight: 700; }
+.ak-honor-note {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: var(--ink-dim);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+/* ============ COMPARE HERO ============ */
+.compare-hero {
+  position: relative;
+  padding: 48px 36px 36px;
+  margin-bottom: 24px;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(201,161,74,0.15), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(200,16,46,0.1), transparent 50%),
+    linear-gradient(135deg, #1a1a1d 0%, #0d0d10 100%);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.compare-hero::before {
+  content: 'VS';
+  position: absolute;
+  top: 30px; right: 40px;
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 140px;
+  line-height: 1;
+  color: rgba(201,161,74,0.07);
+  letter-spacing: -8px;
+}
+.compare-hero-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: 3px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.compare-hero-num::before {
+  content: '';
+  width: 32px; height: 1px;
+  background: var(--gold);
+}
+.compare-hero-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: clamp(36px, 6vw, 72px);
+  letter-spacing: -2px;
+  line-height: 0.95;
+  margin-bottom: 16px;
+  position: relative;
+}
+.compare-hero-title .hero-em {
+  color: var(--gold);
+  font-style: italic;
+  font-size: 0.85em;
+}
+.compare-hero-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-dim);
+  letter-spacing: 2px;
+  position: relative;
+}
+
+/* ============ COMPARE PANEL ============ */
+.compare-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-strong);
+}
+.ctrl-group { display: flex; flex-direction: column; gap: 6px; }
+.ctrl-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.seg-group {
+  display: flex;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.seg {
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--ink-dim);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-right: 1px solid var(--line-strong);
+}
+.seg:last-child { border-right: none; }
+.seg:hover { color: var(--ink); background: rgba(255,255,255,0.03); }
+.seg.active {
+  background: var(--gold);
+  color: #000;
+  font-weight: 700;
+}
+
+.compare-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.ctog {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 100px;
+  cursor: pointer;
+  font-family: 'Oswald', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--ink-dim);
+  transition: all 0.2s;
+}
+.ctog .ctog-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  display: inline-block;
+}
+.ctog:hover { color: var(--ink); }
+.ctog.active {
+  color: var(--ink);
+  background: rgba(255,255,255,0.04);
+  border-color: var(--ink-dim);
+}
+.ctog .ctog-flag { font-size: 13px; }
+
+/* ============ FOOTER ============ */
+.foot {
+  margin-top: 64px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-dim);
+  letter-spacing: 1px; text-transform: uppercase;
+}
+
+/* ============ ANIMS ============ */
+.fade-up { opacity: 0; transform: translateY(16px); animation: fadeUp 0.7s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+.d1{animation-delay:.05s} .d2{animation-delay:.15s} .d3{animation-delay:.28s}
+.d4{animation-delay:.4s} .d5{animation-delay:.52s} .d6{animation-delay:.65s}
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- Topbar -->
+  <div class="topbar fade-up d1">
+    <div class="brand">
+      <div class="brand-mark" id="brandMark">CR</div>
+      <div class="brand-text" id="brandText">CR7 · ULTIMATE DASHBOARD</div>
+    </div>
+    <div class="topbar-actions">
+      <div class="last-updated"><span class="dot"></span><span id="updatedAt">MAY 2026</span></div>
+      <button id="refreshBtn" class="btn btn-primary" onclick="refreshFromWikipedia()">⟳ LIVE取得</button>
+    </div>
+  </div>
+
+  <!-- View Mode Switcher -->
+  <div class="view-mode-bar fade-up d1">
+    <button class="vm-btn active" data-view="individual">
+      <div class="vm-num">◐ MODE 01</div>
+      <div class="vm-title">個別プロフィール</div>
+      <div class="vm-sub">1選手を深掘り · クラブ別 · 大会別 · 推移 · 記録</div>
+    </button>
+    <button class="vm-btn" data-view="compare">
+      <div class="vm-num">◑ MODE 02</div>
+      <div class="vm-title">11選手 直接比較</div>
+      <div class="vm-sub">HEAD-TO-HEAD · 年齢/年号 × ゴール/アシスト/G+A</div>
+    </button>
+    <button class="vm-btn" data-view="assists">
+      <div class="vm-num">◉ MODE 03</div>
+      <div class="vm-title">アシスト・キングス</div>
+      <div class="vm-sub">ALL-TIME TOP 20 ASSIST LEADERS</div>
+    </button>
+  </div>
+
+  <!-- ===== VIEW 1: INDIVIDUAL ===== -->
+  <div class="view-container active" data-view="individual">
+
+  <!-- Player Switcher -->
+  <div class="player-switcher fade-up d1" id="playerSwitcher"></div>
+
+  <!-- Tabs -->
+  <div class="tabs fade-up d2">
+    <button class="tab active" data-panel="overview"><span class="tab-num">01</span>OVERVIEW</button>
+    <button class="tab" data-panel="clubs"><span class="tab-num">02</span>BY CLUB</button>
+    <button class="tab" data-panel="competitions"><span class="tab-num">03</span>BY COMPETITION</button>
+    <button class="tab" data-panel="trends"><span class="tab-num">04</span>TRENDS</button>
+    <button class="tab" data-panel="records"><span class="tab-num">05</span>RECORDS</button>
+  </div>
+
+  <!-- ============ PANEL 1: OVERVIEW ============ -->
+  <div class="panel active" data-panel="overview">
+    <div class="overview-grid">
+
+      <!-- Player Card -->
+      <div class="player-card fade-up d2" id="playerCard">
+        <div class="card-shine"></div>
+        <div class="pc-top">
+          <div class="pc-overall">
+            <div class="pc-rating">84</div>
+            <div class="pc-pos">ST</div>
+            <div class="pc-flag">🇵🇹</div>
+          </div>
+          <div class="pc-club-badge">
+            <div class="pc-club">AL NASSR</div>
+            <div class="pc-shirt">07</div>
+          </div>
+        </div>
+        <div class="pc-portrait">⚽</div>
+        <div class="pc-name">RONALDO</div>
+        <div class="pc-nickname">CR7</div>
+
+        <div class="pc-stats">
+          <div class="pc-stat"><span class="pc-stat-label">PAC</span><span class="pc-stat-val">76</span></div>
+          <div class="pc-stat"><span class="pc-stat-label">SHO</span><span class="pc-stat-val">91</span></div>
+          <div class="pc-stat"><span class="pc-stat-label">PAS</span><span class="pc-stat-val">76</span></div>
+          <div class="pc-stat"><span class="pc-stat-label">DRI</span><span class="pc-stat-val">82</span></div>
+          <div class="pc-stat"><span class="pc-stat-label">DEF</span><span class="pc-stat-val">35</span></div>
+          <div class="pc-stat"><span class="pc-stat-label">PHY</span><span class="pc-stat-val">76</span></div>
+        </div>
+        <div class="pc-foot-info">
+          <div>H 187cm / W 84kg</div>
+          <div>RIGHT FOOT</div>
+          <div>41Y</div>
+        </div>
+      </div>
+
+      <!-- Right side -->
+      <div class="overview-right">
+
+        <div class="big-counter fade-up d3">
+          <div class="bc-label">通算ゴール (club + country)</div>
+          <div class="bc-row">
+            <span class="bc-number" id="bigNumber">0</span>
+            <span class="bc-suffix">GOALS</span>
+          </div>
+          <div class="bc-foot">
+            <div class="bc-foot-item">
+              <div class="bc-foot-label">アシスト</div>
+              <div class="bc-foot-val" id="totalAssists">0</div>
+            </div>
+            <div class="bc-foot-item">
+              <div class="bc-foot-label">出場</div>
+              <div class="bc-foot-val" id="totalApps">0</div>
+            </div>
+            <div class="bc-foot-item">
+              <div class="bc-foot-label">関与</div>
+              <div class="bc-foot-val" id="totalGA">0</div>
+            </div>
+            <div class="bc-foot-item">
+              <div class="bc-foot-label">ゴール/試合</div>
+              <div class="bc-foot-val" id="gPerApp">0.00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="progress-card fade-up d4">
+          <div class="pc-lab">ROAD TO</div>
+          <div class="pc-title">1,000 GOALS</div>
+          <div class="pc-bar-wrap"><div class="pc-bar" id="progBar"></div></div>
+          <div class="pc-stats-row">
+            <div>達成率<strong id="progPct">0%</strong></div>
+            <div>残り<strong id="progRem">0</strong></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Momentos timeline -->
+    <div class="section">
+      <div class="section-head fade-up d5">
+        <div>
+          <div class="section-num">MILESTONES</div>
+          <div class="section-title">主要マイルストーン</div>
+        </div>
+        <div class="section-sub">2008 — 2026</div>
+      </div>
+      <div class="moments fade-up d5" id="momentsList"></div>
+    </div>
+  </div>
+
+  <!-- ============ PANEL 2: CLUBS ============ -->
+  <div class="panel" data-panel="clubs">
+    <div class="section-head">
+      <div>
+        <div class="section-num">CLUB BREAKDOWN</div>
+        <div class="section-title">所属クラブ別</div>
+      </div>
+      <div class="section-sub">GOALS · ASSISTS · APPS</div>
+    </div>
+    <div class="clubs" id="clubsGrid"></div>
+
+    <!-- Club bar chart -->
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-num">VISUAL</div>
+          <div class="section-title">クラブ別ゴール数</div>
+        </div>
+        <div class="section-sub">RANKED BAR CHART</div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-wrap" id="clubChartWrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PANEL 3: COMPETITIONS ============ -->
+  <div class="panel" data-panel="competitions">
+    <div class="section-head">
+      <div>
+        <div class="section-num">COMPETITION BREAKDOWN</div>
+        <div class="section-title">大会別ゴール</div>
+      </div>
+      <div class="section-sub">UCL · LEAGUES · CUPS · NATIONAL</div>
+    </div>
+
+    <div class="comp-filter">
+      <button class="comp-chip active" data-cat="all">ALL</button>
+      <button class="comp-chip" data-cat="european">UEFA</button>
+      <button class="comp-chip" data-cat="league">LEAGUE</button>
+      <button class="comp-chip" data-cat="cup">DOMESTIC CUP</button>
+      <button class="comp-chip" data-cat="club_intl">CLUB INTL</button>
+      <button class="comp-chip" data-cat="national">NATIONAL TEAM</button>
+    </div>
+
+    <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-dim); letter-spacing:1px; margin-bottom:12px;">
+      💡 各大会をタップすると、シーズン別ゴール推移を表示
+    </div>
+
+    <div class="comp-list" id="compList"></div>
+  </div>
+
+  <!-- ============ PANEL 4: TRENDS ============ -->
+  <div class="panel" data-panel="trends">
+    <div class="section-head">
+      <div>
+        <div class="section-num">YEAR-BY-YEAR</div>
+        <div class="section-title">年別推移</div>
+      </div>
+      <div class="section-sub">CALENDAR YEAR · 2002 — 2026</div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-toggles">
+        <button class="tog active" data-series="goals">
+          <span class="swatch" style="background:#c9a14a"></span>ゴール
+        </button>
+        <button class="tog active" data-series="assists">
+          <span class="swatch" style="background:#c8102e"></span>アシスト
+        </button>
+        <button class="tog" data-series="cumG">
+          <span class="swatch" style="background:#f5f5f0"></span>累積ゴール
+        </button>
+        <button class="tog" data-series="cumA">
+          <span class="swatch" style="background:#8a8a85"></span>累積アシスト
+        </button>
+      </div>
+      <div class="chart-wrap" id="trendChartWrap"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-num">PEAK YEARS</div>
+          <div class="section-title">ベストシーズン TOP 5</div>
+        </div>
+        <div class="section-sub">BY GOALS PER YEAR</div>
+      </div>
+      <div class="records" id="peakYears"></div>
+    </div>
+  </div>
+
+  <!-- ============ PANEL: RECORDS ============ -->
+  <div class="panel" data-panel="records">
+    <div class="section-head">
+      <div>
+        <div class="section-num">LEGACY</div>
+        <div class="section-title">主要記録 & タイトル</div>
+      </div>
+      <div class="section-sub">ALL-TIME MARKS</div>
+    </div>
+
+    <div class="records">
+      <div class="record"><div class="record-val">140</div><div class="record-label">UCL通算ゴール 歴代1位</div></div>
+      <div class="record"><div class="record-val">143</div><div class="record-label">男子A代表ゴール 歴代1位</div></div>
+      <div class="record"><div class="record-val">5×</div><div class="record-label">バロンドール受賞</div></div>
+      <div class="record"><div class="record-val">5×</div><div class="record-label">UEFA CL優勝</div></div>
+      <div class="record"><div class="record-val">7×</div><div class="record-label">国内リーグ優勝(英2,西2,伊2,沙1)</div></div>
+      <div class="record"><div class="record-val">14</div><div class="record-label">EURO本大会ゴール 歴代1位</div></div>
+      <div class="record"><div class="record-val">2016</div><div class="record-label">EURO ポルトガル初優勝</div></div>
+      <div class="record"><div class="record-val">2019/25</div><div class="record-label">UEFA ネーションズリーグ優勝</div></div>
+      <div class="record"><div class="record-val">3</div><div class="record-label">3カ国でリーグ得点王(英伊西)</div></div>
+      <div class="record"><div class="record-val">5</div><div class="record-label">FIFA W杯出場 男子最多</div></div>
+      <div class="record"><div class="record-val">39</div><div class="record-label">クラブ・代表通算タイトル</div></div>
+      <div class="record"><div class="record-val">187</div><div class="record-label">身長(cm)</div></div>
+    </div>
+  </div>
+
+  </div>
+  <!-- ===== END VIEW 1: INDIVIDUAL ===== -->
+
+  <!-- ===== VIEW 2: COMPARE ===== -->
+  <div class="view-container" data-view="compare">
+
+    <!-- Hero header -->
+    <div class="compare-hero">
+      <div class="compare-hero-num">02 / HEAD-TO-HEAD</div>
+      <div class="compare-hero-title">11 LEGENDS<br><span class="hero-em">DIRECT COMPARISON</span></div>
+      <div class="compare-hero-sub">RONALDO · MESSI · NEYMAR · KANE · ZLATAN · SUÁREZ · BENZEMA · LEWANDOWSKI · HAALAND · MBAPPÉ · YAMAL</div>
+    </div>
+
+    <!-- Compare Controls -->
+    <div class="compare-controls">
+      <div class="ctrl-group">
+        <div class="ctrl-label">X軸</div>
+        <div class="seg-group">
+          <button class="seg active" data-xmode="age">年齢で比較</button>
+          <button class="seg" data-xmode="year">年号で比較</button>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">指標</div>
+        <div class="seg-group">
+          <button class="seg active" data-metric="goals">ゴール</button>
+          <button class="seg" data-metric="assists">アシスト</button>
+          <button class="seg" data-metric="ga">G+A</button>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">表示</div>
+        <div class="seg-group">
+          <button class="seg active" data-stack="cum">累積</button>
+          <button class="seg" data-stack="annual">年間</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Player toggles -->
+    <div class="compare-toggles" id="compareToggles"></div>
+
+    <!-- Chart -->
+    <div class="chart-card">
+      <div class="chart-wrap" id="compareChartWrap" style="height: 680px;"></div>
+    </div>
+
+    <!-- Leader board -->
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-num">RANKINGS</div>
+          <div class="section-title">現在の順位</div>
+        </div>
+        <div class="section-sub" id="compareRankingSub">CUMULATIVE GOALS</div>
+      </div>
+      <div class="comp-list" id="compareRanking"></div>
+    </div>
+
+  </div>
+  <!-- ===== END VIEW 2: COMPARE ===== -->
+
+  <!-- ===== VIEW 3: ASSIST KINGS ===== -->
+  <div class="view-container" data-view="assists">
+
+    <!-- Hero header -->
+    <div class="assist-hero">
+      <div class="ah-num">03 / PLAYMAKERS</div>
+      <div class="ah-title">ASSIST<br><span class="ah-em">KINGS</span></div>
+      <div class="ah-sub">ALL-TIME TOP 20 · CAREER ASSISTS</div>
+    </div>
+
+    <!-- Toggle: stats display mode -->
+    <div class="ak-controls">
+      <div class="ctrl-group">
+        <div class="ctrl-label">表示順</div>
+        <div class="seg-group">
+          <button class="seg active" data-sort="assists">アシスト順</button>
+          <button class="seg" data-sort="ga">G+A順</button>
+          <button class="seg" data-sort="goals">ゴール順</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top 10 ranking with bars -->
+    <div class="ak-ranking" id="akRanking"></div>
+
+    <!-- Comparison bar chart -->
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-num">VISUAL</div>
+          <div class="section-title">アシスト vs ゴール比較</div>
+        </div>
+        <div class="section-sub">STACKED BAR · ASSISTS vs GOALS</div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-wrap" id="akChartWrap" style="height: 880px;"></div>
+      </div>
+    </div>
+
+    <!-- Honorable mentions -->
+    <div class="section">
+      <div class="section-head">
+        <div>
+          <div class="section-num">惜しくも</div>
+          <div class="section-title">HONORABLE MENTIONS</div>
+        </div>
+        <div class="section-sub">JUST OUTSIDE TOP 20</div>
+      </div>
+      <div class="ak-honors" id="akHonors"></div>
+    </div>
+
+  </div>
+  <!-- ===== END VIEW 3: ASSIST KINGS ===== -->
+
+  <div class="foot">
+    <div>SOURCES · ESPN GOAL TRACKER · WIKIPEDIA · FBREF · UEFA · OFFICIAL CLUB DATA</div>
+    <div id="updateNote">OFFICIAL MATCHES ONLY · LIVE取得ボタンで現シーズンの最新値を反映</div>
+  </div>
+
+</div>
+
+<script>
+// ===== EMBEDDED DATA: 8 LEGENDS =====
+// =====================================================
+//  GOAT GOALS DATABASE — 8 LEGENDS
+//  Sources: ESPN, Wikipedia, FBref, FotMob, Transfermarkt
+//  Updated: May 2026
+// =====================================================
+
+const PLAYERS = {
+
+  // ============ CRISTIANO RONALDO ============
+  cr7: {
+    id: "cr7",
+    name: "CRISTIANO RONALDO",
+    short: "RONALDO",
+    nick: "CR7",
+    flag: "🇵🇹",
+    nation: "Portugal",
+    club: "AL NASSR",
+    shirt: 7,
+    height: 187, weight: 84, foot: "Right",
+    pos: "ST", age: 41,
+    accent: "#c9a14a", accentDeep: "#8b6c2a",
+    rating: { ovr:84, pac:76, sho:91, pas:76, dri:82, def:35, phy:76 },
+    totals: { goals: 971, assists: 261, apps: 1321 },
+    milestone: 1000,
+    clubs: [
+      { name:"Sporting CP", sub:"", period:"02–03", goals:5, apps:31, assists:6, color:"#006a44" },
+      { name:"Manchester United", sub:"1st", period:"03–09", goals:118, apps:292, assists:69, color:"#da291c" },
+      { name:"Real Madrid", sub:"", period:"09–18", goals:450, apps:438, assists:131, color:"#febe10" },
+      { name:"Juventus", sub:"", period:"18–21", goals:101, apps:134, assists:22, color:"#bbbbbb" },
+      { name:"Manchester United", sub:"2nd", period:"21–22", goals:27, apps:54, assists:4, color:"#da291c" },
+      { name:"Al Nassr", sub:"", period:"23–現在", goals:127, apps:146, assists:26, color:"#fff200" },
+      { name:"🇵🇹 ポルトガル代表", sub:"", period:"03–現在", goals:143, apps:225, assists:43, color:"#c8102e" }
+    ],
+    competitions: [
+      { name:"UEFA Champions League", cat:"european", goals:140, apps:187, color:"#0d2960", note:"歴代最多" },
+      { name:"La Liga", cat:"league", goals:311, apps:292, color:"#ee2222", note:"3×ピチーチ賞" },
+      { name:"Premier League", cat:"league", goals:103, apps:236, color:"#3d195b" },
+      { name:"Serie A", cat:"league", goals:81, apps:98, color:"#008fd7" },
+      { name:"Saudi Pro League", cat:"league", goals:100, apps:106, color:"#00853e", note:"単年35得点新記録" },
+      { name:"UEFA Euro", cat:"national", goals:14, apps:30, color:"#001f5b", note:"歴代最多" },
+      { name:"FIFA World Cup", cat:"national", goals:8, apps:22, color:"#003594", note:"5大会出場" },
+      { name:"WC Qualifying", cat:"national", goals:41, apps:51, color:"#003594" },
+      { name:"Euro Qualifying", cat:"national", goals:38, apps:44, color:"#001f5b" },
+      { name:"Nations League", cat:"national", goals:14, apps:26, color:"#001f5b", note:"2019/2025優勝" },
+      { name:"Friendly", cat:"national", goals:26, apps:48, color:"#c8102e" },
+      { name:"Copa del Rey", cat:"cup", goals:22, apps:30, color:"#ee2222" },
+      { name:"FA Cup", cat:"cup", goals:13, apps:28, color:"#3d195b" },
+      { name:"Club World Cup", cat:"club_intl", goals:7, apps:11, color:"#1a3a8a" }
+    ],
+    yearly: [
+      [2003,8],[2004,9],[2005,13],[2006,19],[2007,30],[2008,49],[2009,33],[2010,51],
+      [2011,60],[2012,63],[2013,69],[2014,61],[2015,57],[2016,55],[2017,53],[2018,49],
+      [2019,39],[2020,41],[2021,46],[2022,24],[2023,54],[2024,47],[2025,43],[2026,18]
+    ],
+    records: [
+      ["140","UCL通算 歴代1位"],["143","男子A代表 歴代1位"],["5×","バロンドール"],
+      ["5×","UCL優勝"],["14","EURO本大会 歴代1位"],["2016","EURO初優勝"],
+      ["5","W杯出場 男子最多"],["3","3カ国で得点王"]
+    ]
+  },
+
+  // ============ LIONEL MESSI ============
+  messi: {
+    id: "messi",
+    name: "LIONEL MESSI",
+    short: "MESSI",
+    nick: "LA PULGA",
+    flag: "🇦🇷",
+    nation: "Argentina",
+    club: "INTER MIAMI",
+    shirt: 10,
+    height: 170, weight: 72, foot: "Left",
+    pos: "RW/CF", age: 38,
+    accent: "#75aadb", accentDeep: "#4a7ba8",
+    rating: { ovr:88, pac:78, sho:88, pas:91, dri:92, def:33, phy:65 },
+    totals: { goals: 909, assists: 410, apps: 1152 },
+    milestone: 1000,
+    clubs: [
+      { name:"FC Barcelona", sub:"", period:"04–21", goals:672, apps:778, assists:303, color:"#a50044" },
+      { name:"Paris Saint-Germain", sub:"", period:"21–23", goals:32, apps:75, assists:35, color:"#004170" },
+      { name:"Inter Miami", sub:"", period:"23–現在", goals:89, apps:103, assists:29, color:"#f7b5cd" },
+      { name:"🇦🇷 アルゼンチン代表", sub:"", period:"05–現在", goals:116, apps:196, assists:55, color:"#75aadb" }
+    ],
+    competitions: [
+      { name:"La Liga", cat:"league", goals:474, apps:520, color:"#ee2222", note:"歴代最多" },
+      { name:"UEFA Champions League", cat:"european", goals:129, apps:163, color:"#0d2960", note:"歴代2位" },
+      { name:"MLS", cat:"league", goals:48, apps:55, color:"#c8102e", note:"23/24 MVP" },
+      { name:"Ligue 1", cat:"league", goals:22, apps:58, color:"#091c3e" },
+      { name:"Copa America", cat:"national", goals:14, apps:39, color:"#75aadb", note:"2021/2024優勝" },
+      { name:"FIFA World Cup", cat:"national", goals:13, apps:26, color:"#003594", note:"2022優勝" },
+      { name:"WC Qualifying", cat:"national", goals:30, apps:74, color:"#003594" },
+      { name:"Copa del Rey", cat:"cup", goals:56, apps:80, color:"#ee2222" },
+      { name:"Supercopa", cat:"cup", goals:14, apps:20, color:"#fdb913" },
+      { name:"Friendly", cat:"national", goals:39, apps:57, color:"#75aadb" },
+      { name:"Leagues Cup", cat:"club_intl", goals:11, apps:7, color:"#c8102e", note:"2023優勝・得点王" },
+      { name:"Club World Cup", cat:"club_intl", goals:5, apps:6, color:"#1a3a8a" }
+    ],
+    yearly: [
+      [2005,1],[2006,17],[2007,18],[2008,38],[2009,47],[2010,60],[2011,59],[2012,91],
+      [2013,45],[2014,58],[2015,52],[2016,59],[2017,54],[2018,51],[2019,50],[2020,38],
+      [2021,41],[2022,32],[2023,30],[2024,33],[2025,38],[2026,17]
+    ],
+    records: [
+      ["8×","バロンドール 歴代最多"],["474","La Liga通算 歴代1位"],["91","2012暦年最多 不滅記録"],
+      ["2022","W杯優勝・大会MVP"],["7×","ピチーチ賞"],["116","アルゼンチン代表"],
+      ["4×","UCL優勝"],["2×","コパ・アメリカ優勝"]
+    ]
+  },
+
+  // ============ NEYMAR JR ============
+  neymar: {
+    id: "neymar",
+    name: "NEYMAR JR",
+    short: "NEYMAR",
+    nick: "NJR",
+    flag: "🇧🇷",
+    nation: "Brazil",
+    club: "SANTOS",
+    shirt: 10,
+    height: 175, weight: 68, foot: "Right",
+    pos: "LW/AM", age: 34,
+    accent: "#fedf00", accentDeep: "#b39e00",
+    rating: { ovr:82, pac:80, sho:81, pas:84, dri:90, def:32, phy:60 },
+    totals: { goals: 449, assists: 246, apps: 819 },
+    milestone: 500,
+    clubs: [
+      { name:"Santos", sub:"1st", period:"09–13", goals:136, apps:225, assists:64, color:"#000000" },
+      { name:"FC Barcelona", sub:"", period:"13–17", goals:105, apps:186, assists:76, color:"#a50044" },
+      { name:"Paris Saint-Germain", sub:"", period:"17–23", goals:118, apps:173, assists:77, color:"#004170" },
+      { name:"Al Hilal", sub:"", period:"23–25", goals:1, apps:7, assists:1, color:"#0058a3" },
+      { name:"Santos", sub:"2nd", period:"25–現在", goals:10, apps:30, assists:4, color:"#000000" },
+      { name:"🇧🇷 ブラジル代表", sub:"", period:"10–現在", goals:79, apps:128, assists:24, color:"#009639" }
+    ],
+    competitions: [
+      { name:"Ligue 1", cat:"league", goals:82, apps:112, color:"#091c3e", note:"5×優勝" },
+      { name:"La Liga", cat:"league", goals:68, apps:123, color:"#ee2222" },
+      { name:"UEFA Champions League", cat:"european", goals:43, apps:81, color:"#0d2960", note:"2015優勝" },
+      { name:"Brasileirão", cat:"league", goals:54, apps:103, color:"#009639" },
+      { name:"Copa America", cat:"national", goals:8, apps:21, color:"#75aadb" },
+      { name:"FIFA World Cup", cat:"national", goals:8, apps:14, color:"#003594" },
+      { name:"WC Qualifying", cat:"national", goals:14, apps:24, color:"#003594" },
+      { name:"Copa Libertadores", cat:"club_intl", goals:18, apps:30, color:"#fdb913", note:"2011優勝" },
+      { name:"Copa del Rey", cat:"cup", goals:13, apps:26, color:"#ee2222" },
+      { name:"Coupe de France", cat:"cup", goals:18, apps:23, color:"#091c3e" },
+      { name:"Confed Cup", cat:"national", goals:4, apps:5, color:"#003594", note:"2013優勝・MVP" },
+      { name:"Olympics", cat:"national", goals:6, apps:11, color:"#5b9bd5", note:"2016金メダル" }
+    ],
+    yearly: [
+      [2009,14],[2010,42],[2011,28],[2012,43],[2013,18],[2014,39],[2015,43],[2016,37],
+      [2017,28],[2018,28],[2019,23],[2020,16],[2021,12],[2022,18],[2023,5],[2024,1],
+      [2025,8],[2026,4]
+    ],
+    records: [
+      ["79","ブラジル代表 歴代1位"],["3×","100ゴール三大陸初"],["1×","UCL優勝(15)"],
+      ["2016","リオ五輪 金メダル"],["1×","Puskás賞"],["18","Libertadores通算"],
+      ["5×","Ligue 1優勝"],["3×","コパ・デル・レイ優勝"]
+    ]
+  },
+
+  // ============ HARRY KANE ============
+  kane: {
+    id: "kane",
+    name: "HARRY KANE",
+    short: "KANE",
+    nick: "HURRICANE",
+    flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    nation: "England",
+    club: "BAYERN MÜNCHEN",
+    shirt: 9,
+    height: 188, weight: 86, foot: "Right",
+    pos: "ST", age: 32,
+    accent: "#dc052d", accentDeep: "#9a0420",
+    rating: { ovr:89, pac:67, sho:93, pas:82, dri:80, def:46, phy:82 },
+    totals: { goals: 528, assists: 134, apps: 731 },
+    milestone: 600,
+    clubs: [
+      { name:"Leyton Orient", sub:"loan", period:"11", goals:5, apps:18, assists:1, color:"#d4001a" },
+      { name:"Norwich/Leicester/Millwall", sub:"loan", period:"12–13", goals:11, apps:30, assists:2, color:"#888" },
+      { name:"Tottenham Hotspur", sub:"", period:"11–23", goals:280, apps:435, assists:64, color:"#132257", note:"歴代最多" },
+      { name:"Bayern München", sub:"", period:"23–現在", goals:154, apps:135, assists:32, color:"#dc052d" },
+      { name:"🏴󠁧󠁢󠁥󠁮󠁧󠁿 イングランド代表", sub:"", period:"15–現在", goals:78, apps:113, assists:18, color:"#ffffff" }
+    ],
+    competitions: [
+      { name:"Premier League", cat:"league", goals:213, apps:320, color:"#3d195b", note:"歴代3位" },
+      { name:"Bundesliga", cat:"league", goals:101, apps:90, color:"#d3010c", note:"24/25 25/26 得点王" },
+      { name:"UEFA Champions League", cat:"european", goals:39, apps:60, color:"#0d2960" },
+      { name:"UEFA Euro", cat:"national", goals:7, apps:15, color:"#001f5b" },
+      { name:"FIFA World Cup", cat:"national", goals:8, apps:11, color:"#003594", note:"2018得点王" },
+      { name:"WC Qualifying", cat:"national", goals:19, apps:21, color:"#003594" },
+      { name:"Euro Qualifying", cat:"national", goals:13, apps:14, color:"#001f5b" },
+      { name:"Nations League", cat:"national", goals:7, apps:15, color:"#001f5b" },
+      { name:"FA Cup", cat:"cup", goals:7, apps:24, color:"#3d195b" },
+      { name:"EFL Cup", cat:"cup", goals:18, apps:31, color:"#3d195b" },
+      { name:"DFB-Pokal", cat:"cup", goals:6, apps:7, color:"#d3010c" },
+      { name:"DFL-Supercup", cat:"cup", goals:1, apps:2, color:"#d3010c", note:"2025優勝" },
+      { name:"Club World Cup", cat:"club_intl", goals:1, apps:4, color:"#1a3a8a" }
+    ],
+    yearly: [
+      [2011,1],[2012,2],[2013,5],[2014,33],[2015,42],[2016,30],[2017,56],[2018,47],
+      [2019,32],[2020,30],[2021,29],[2022,36],[2023,52],[2024,52],[2025,58],[2026,24]
+    ],
+    records: [
+      ["78","イングランド代表 歴代1位"],["280","スパーズ歴代1位"],["3×","プレミア得点王"],
+      ["2×","Bundesliga得点王"],["1×","W杯得点王(18)"],["3×","Golden Boot"],
+      ["1×","Bundesliga優勝(24/25)"],["500","通算500ゴール(26)"]
+    ]
+  },
+
+  // ============ ZLATAN IBRAHIMOVIC (引退) ============
+  zlatan: {
+    id: "zlatan",
+    name: "ZLATAN IBRAHIMOVIĆ",
+    short: "ZLATAN",
+    nick: "IBRA",
+    flag: "🇸🇪",
+    nation: "Sweden",
+    club: "RETIRED (2023)",
+    shirt: 11,
+    height: 195, weight: 95, foot: "Right",
+    pos: "ST", age: "引退",
+    accent: "#fecc00", accentDeep: "#b39600",
+    rating: { ovr:88, pac:69, sho:92, pas:80, dri:84, def:43, phy:88 },
+    totals: { goals: 573, assists: 210, apps: 988 },
+    milestone: 573, // already achieved
+    clubs: [
+      { name:"Malmö FF", sub:"", period:"99–01", goals:18, apps:47, assists:10, color:"#0066b3" },
+      { name:"Ajax", sub:"", period:"01–04", goals:48, apps:110, assists:18, color:"#d2122e" },
+      { name:"Juventus", sub:"", period:"04–06", goals:26, apps:92, assists:13, color:"#000000" },
+      { name:"Inter Milan", sub:"", period:"06–09", goals:66, apps:117, assists:19, color:"#0e1a78" },
+      { name:"FC Barcelona", sub:"", period:"09–10", goals:22, apps:46, assists:14, color:"#a50044" },
+      { name:"AC Milan", sub:"1st+2nd", period:"10–12, 20–23", goals:93, apps:163, assists:38, color:"#fb0a1e" },
+      { name:"PSG", sub:"", period:"12–16", goals:156, apps:180, assists:60, color:"#004170" },
+      { name:"Manchester United", sub:"", period:"16–18", goals:29, apps:53, assists:8, color:"#da291c" },
+      { name:"LA Galaxy", sub:"", period:"18–19", goals:53, apps:58, assists:18, color:"#fdb913" },
+      { name:"🇸🇪 スウェーデン代表", sub:"", period:"01–23", goals:62, apps:122, assists:12, color:"#fecc00" }
+    ],
+    competitions: [
+      { name:"Ligue 1", cat:"league", goals:113, apps:122, color:"#091c3e", note:"3×得点王" },
+      { name:"Serie A", cat:"league", goals:127, apps:233, color:"#008fd7" },
+      { name:"Eredivisie", cat:"league", goals:35, apps:74, color:"#ee2222" },
+      { name:"Premier League", cat:"league", goals:17, apps:33, color:"#3d195b" },
+      { name:"La Liga", cat:"league", goals:16, apps:29, color:"#ee2222" },
+      { name:"MLS", cat:"league", goals:52, apps:56, color:"#c8102e" },
+      { name:"UEFA Champions League", cat:"european", goals:48, apps:124, color:"#0d2960" },
+      { name:"UEFA Euro", cat:"national", goals:6, apps:14, color:"#001f5b" },
+      { name:"FIFA World Cup", cat:"national", goals:1, apps:5, color:"#003594" },
+      { name:"WC Qualifying", cat:"national", goals:11, apps:30, color:"#003594" },
+      { name:"Coupe de France", cat:"cup", goals:12, apps:18, color:"#091c3e" },
+      { name:"Europa League", cat:"european", goals:18, apps:30, color:"#ff6c00", note:"2017優勝" },
+      { name:"Coppa Italia", cat:"cup", goals:8, apps:24, color:"#008fd7" }
+    ],
+    yearly: [
+      [2001,12],[2002,11],[2003,15],[2004,15],[2005,17],[2006,21],[2007,29],[2008,32],
+      [2009,24],[2010,32],[2011,33],[2012,52],[2013,46],[2014,40],[2015,52],[2016,50],
+      [2017,5],[2018,28],[2019,32],[2020,17],[2021,19],[2022,1],[2023,0]
+    ],
+    records: [
+      ["62","スウェーデン代表 歴代1位"],["3×","Ligue 1得点王"],["13×","異なるリーグ・国で得点王"],
+      ["1×","Puskás賞(13)"],["1×","Europa League優勝"],["41","41歳でセリエA優勝(22)"],
+      ["6","異なるクラブで国内タイトル"],["156","PSG歴代2位"]
+    ]
+  },
+
+  // ============ LUIS SUAREZ ============
+  suarez: {
+    id: "suarez",
+    name: "LUIS SUÁREZ",
+    short: "SUÁREZ",
+    nick: "EL PISTOLERO",
+    flag: "🇺🇾",
+    nation: "Uruguay",
+    club: "INTER MIAMI",
+    shirt: 9,
+    height: 182, weight: 86, foot: "Right",
+    pos: "ST", age: 39,
+    accent: "#5cbfeb", accentDeep: "#3a8bb3",
+    rating: { ovr:83, pac:71, sho:88, pas:80, dri:83, def:40, phy:74 },
+    totals: { goals: 588, assists: 280, apps: 1004 },
+    milestone: 600,
+    clubs: [
+      { name:"Nacional", sub:"", period:"05–06", goals:12, apps:34, assists:5, color:"#003a70" },
+      { name:"Groningen", sub:"", period:"06–07", goals:15, apps:37, assists:7, color:"#009d3c" },
+      { name:"Ajax", sub:"", period:"07–11", goals:111, apps:159, assists:54, color:"#d2122e" },
+      { name:"Liverpool", sub:"", period:"11–14", goals:82, apps:133, assists:55, color:"#c8102e" },
+      { name:"FC Barcelona", sub:"", period:"14–20", goals:198, apps:283, assists:113, color:"#a50044" },
+      { name:"Atlético Madrid", sub:"", period:"20–22", goals:34, apps:83, assists:13, color:"#ce3524" },
+      { name:"Nacional", sub:"2nd", period:"22", goals:8, apps:14, assists:2, color:"#003a70" },
+      { name:"Grêmio", sub:"", period:"23", goals:29, apps:53, assists:17, color:"#0099d5" },
+      { name:"Inter Miami", sub:"", period:"24–現在", goals:31, apps:65, assists:21, color:"#f7b5cd" },
+      { name:"🇺🇾 ウルグアイ代表", sub:"", period:"07–現在", goals:69, apps:143, assists:24, color:"#5cbfeb" }
+    ],
+    competitions: [
+      { name:"La Liga", cat:"league", goals:147, apps:215, color:"#ee2222", note:"15/16 ピチーチ" },
+      { name:"Premier League", cat:"league", goals:69, apps:110, color:"#3d195b", note:"13/14 得点王" },
+      { name:"Eredivisie", cat:"league", goals:81, apps:110, color:"#ee2222" },
+      { name:"UEFA Champions League", cat:"european", goals:30, apps:74, color:"#0d2960", note:"2015優勝" },
+      { name:"Copa America", cat:"national", goals:8, apps:24, color:"#75aadb", note:"2011優勝" },
+      { name:"FIFA World Cup", cat:"national", goals:7, apps:13, color:"#003594" },
+      { name:"WC Qualifying", cat:"national", goals:29, apps:50, color:"#003594" },
+      { name:"Copa del Rey", cat:"cup", goals:22, apps:30, color:"#ee2222" },
+      { name:"FA Cup", cat:"cup", goals:5, apps:13, color:"#3d195b" },
+      { name:"EFL Cup", cat:"cup", goals:5, apps:9, color:"#3d195b" },
+      { name:"MLS", cat:"league", goals:15, apps:36, color:"#c8102e" },
+      { name:"Brasileirão", cat:"league", goals:11, apps:21, color:"#009639" },
+      { name:"Leagues Cup", cat:"club_intl", goals:7, apps:5, color:"#c8102e" }
+    ],
+    yearly: [
+      [2005,2],[2006,11],[2007,17],[2008,22],[2009,34],[2010,49],[2011,34],[2012,30],
+      [2013,33],[2014,42],[2015,39],[2016,69],[2017,32],[2018,33],[2019,28],[2020,17],
+      [2021,21],[2022,22],[2023,33],[2024,30],[2025,28],[2026,8]
+    ],
+    records: [
+      ["69","ウルグアイ代表 歴代1位"],["198","バルセロナ歴代3位"],["1×","プレミア得点王(14)"],
+      ["1×","ピチーチ賞(16)"],["1×","UCL優勝(15)"],["2011","コパ・アメリカ優勝"],
+      ["1×","ゴールデンシュー"],["40","40歳でMLSキャプテン"]
+    ]
+  },
+
+  // ============ KARIM BENZEMA ============
+  benzema: {
+    id: "benzema",
+    name: "KARIM BENZEMA",
+    short: "BENZEMA",
+    nick: "KB9",
+    flag: "🇫🇷",
+    nation: "France",
+    club: "AL ITTIHAD",
+    shirt: 9,
+    height: 185, weight: 81, foot: "Right",
+    pos: "ST/CF", age: 38,
+    accent: "#a64ac9", accentDeep: "#7a2e9c",
+    rating: { ovr:85, pac:72, sho:88, pas:83, dri:84, def:39, phy:77 },
+    totals: { goals: 501, assists: 187, apps: 909 },
+    milestone: 550,
+    clubs: [
+      { name:"Olympique Lyon", sub:"", period:"04–09", goals:66, apps:148, assists:34, color:"#003090" },
+      { name:"Real Madrid", sub:"", period:"09–23", goals:354, apps:648, assists:165, color:"#febe10" },
+      { name:"Al Ittihad", sub:"", period:"23–現在", goals:44, apps:76, assists:18, color:"#fbb900" },
+      { name:"🇫🇷 フランス代表", sub:"", period:"07–22", goals:37, apps:97, assists:21, color:"#0055a4" }
+    ],
+    competitions: [
+      { name:"La Liga", cat:"league", goals:238, apps:439, color:"#ee2222", note:"21/22 ピチーチ" },
+      { name:"UEFA Champions League", cat:"european", goals:90, apps:152, color:"#0d2960", note:"5×優勝・歴代5位" },
+      { name:"Ligue 1", cat:"league", goals:43, apps:112, color:"#091c3e" },
+      { name:"Saudi Pro League", cat:"league", goals:30, apps:48, color:"#00853e" },
+      { name:"Copa del Rey", cat:"cup", goals:32, apps:55, color:"#ee2222" },
+      { name:"Supercopa", cat:"cup", goals:7, apps:18, color:"#fdb913" },
+      { name:"UEFA Super Cup", cat:"european", goals:2, apps:5, color:"#0d2960" },
+      { name:"Club World Cup", cat:"club_intl", goals:10, apps:14, color:"#1a3a8a", note:"5×優勝" },
+      { name:"AFC Champions League", cat:"club_intl", goals:5, apps:10, color:"#e60012" },
+      { name:"King's Cup", cat:"cup", goals:7, apps:10, color:"#00853e" },
+      { name:"UEFA Euro", cat:"national", goals:5, apps:10, color:"#001f5b" },
+      { name:"Friendly", cat:"national", goals:13, apps:33, color:"#0055a4" },
+      { name:"WC Qualifying", cat:"national", goals:9, apps:22, color:"#003594" },
+      { name:"Nations League", cat:"national", goals:5, apps:11, color:"#001f5b", note:"2021優勝・MVP" },
+      { name:"Coupe de France", cat:"cup", goals:7, apps:24, color:"#091c3e" }
+    ],
+    yearly: [
+      [2005,2],[2006,4],[2007,15],[2008,29],[2009,28],[2010,32],[2011,33],[2012,33],
+      [2013,28],[2014,26],[2015,33],[2016,33],[2017,15],[2018,25],[2019,32],[2020,27],
+      [2021,30],[2022,44],[2023,30],[2024,21],[2025,25],[2026,9]
+    ],
+    records: [
+      ["1×","バロンドール(2022)"],["5×","UCL優勝"],["354","レアル歴代2位"],
+      ["1×","ピチーチ賞(22)"],["2021","Nations League MVP"],["1×","ゴールデンシュー(22)"],
+      ["19","Lyon史上最年少出場"],["4","異なるリーグでゴール"]
+    ]
+  },
+
+  // ============ ROBERT LEWANDOWSKI ============
+  lewa: {
+    id: "lewa",
+    name: "ROBERT LEWANDOWSKI",
+    short: "LEWANDOWSKI",
+    nick: "LEWY",
+    flag: "🇵🇱",
+    nation: "Poland",
+    club: "FC BARCELONA",
+    shirt: 9,
+    height: 186, weight: 81, foot: "Right",
+    pos: "ST", age: 37,
+    accent: "#dc143c", accentDeep: "#9a0a28",
+    rating: { ovr:88, pac:71, sho:91, pas:78, dri:79, def:44, phy:81 },
+    totals: { goals: 762, assists: 199, apps: 1018 },
+    milestone: 800,
+    clubs: [
+      { name:"Znicz Pruszków", sub:"", period:"06–08", goals:36, apps:60, assists:8, color:"#1e4d2b" },
+      { name:"Lech Poznań", sub:"", period:"08–10", goals:41, apps:82, assists:14, color:"#1c428a" },
+      { name:"Borussia Dortmund", sub:"", period:"10–14", goals:103, apps:187, assists:42, color:"#fde100" },
+      { name:"Bayern München", sub:"", period:"14–22", goals:344, apps:375, assists:72, color:"#dc052d", note:"歴代2位" },
+      { name:"FC Barcelona", sub:"", period:"22–現在", goals:101, apps:175, assists:31, color:"#a50044" },
+      { name:"🇵🇱 ポーランド代表", sub:"", period:"08–現在", goals:90, apps:165, assists:32, color:"#dc143c", note:"歴代最多" }
+    ],
+    competitions: [
+      { name:"Bundesliga", cat:"league", goals:312, apps:384, color:"#d3010c", note:"7×得点王・歴代2位" },
+      { name:"La Liga", cat:"league", goals:73, apps:135, color:"#ee2222", note:"22/23 ピチーチ" },
+      { name:"UEFA Champions League", cat:"european", goals:104, apps:142, color:"#0d2960", note:"歴代4位" },
+      { name:"Ekstraklasa", cat:"league", goals:32, apps:58, color:"#dc143c" },
+      { name:"DFB-Pokal", cat:"cup", goals:36, apps:50, color:"#d3010c" },
+      { name:"Copa del Rey", cat:"cup", goals:10, apps:14, color:"#ee2222" },
+      { name:"DFL-Supercup", cat:"cup", goals:7, apps:12, color:"#d3010c" },
+      { name:"Supercopa", cat:"cup", goals:5, apps:7, color:"#fdb913" },
+      { name:"UEFA Euro", cat:"national", goals:5, apps:11, color:"#001f5b" },
+      { name:"FIFA World Cup", cat:"national", goals:2, apps:7, color:"#003594" },
+      { name:"WC Qualifying", cat:"national", goals:28, apps:48, color:"#003594" },
+      { name:"Euro Qualifying", cat:"national", goals:30, apps:45, color:"#001f5b", note:"歴代最多単一予選16G(18)" },
+      { name:"Nations League", cat:"national", goals:13, apps:25, color:"#001f5b" },
+      { name:"Friendly", cat:"national", goals:11, apps:23, color:"#dc143c" },
+      { name:"Club World Cup", cat:"club_intl", goals:5, apps:6, color:"#1a3a8a" }
+    ],
+    yearly: [
+      [2008,4],[2009,21],[2010,28],[2011,28],[2012,33],[2013,42],[2014,31],[2015,55],
+      [2016,52],[2017,55],[2018,42],[2019,53],[2020,70],[2021,77],[2022,46],[2023,38],
+      [2024,42],[2025,28],[2026,13]
+    ],
+    records: [
+      ["90","ポーランド代表 歴代1位"],["7×","Bundesliga得点王"],["41","2020-21 単年Bundesliga(歴代1位)"],
+      ["2×","バロンドール 表彰式抜きで世界年間最優秀"],["2×","ゴールデンシュー"],
+      ["5","9分5ゴール(15・Bundesliga)"],["3×","UEFA Striker of the Year"],
+      ["2020","Continental Treble + 全大会得点王"]
+    ]
+  },
+
+  // ============ ERLING HAALAND (次世代) ============
+  haaland: {
+    id: "haaland",
+    name: "ERLING HAALAND",
+    short: "HAALAND",
+    nick: "EH9",
+    flag: "🇳🇴",
+    nation: "Norway",
+    club: "MANCHESTER CITY",
+    shirt: 9,
+    height: 195, weight: 88, foot: "Left",
+    pos: "ST", age: 25,
+    accent: "#6caddf", accentDeep: "#3a82b8",
+    rating: { ovr:91, pac:89, sho:93, pas:65, dri:80, def:45, phy:88 },
+    totals: { goals: 358, assists: 78, apps: 437 },
+    milestone: 500,
+    clubs: [
+      { name:"Bryne", sub:"", period:"16–17", goals:0, apps:16, assists:0, color:"#1f3a93" },
+      { name:"Molde", sub:"", period:"17–18", goals:20, apps:50, assists:7, color:"#003c8b" },
+      { name:"Red Bull Salzburg", sub:"", period:"19", goals:29, apps:27, assists:7, color:"#e30613" },
+      { name:"Borussia Dortmund", sub:"", period:"20–22", goals:86, apps:89, assists:23, color:"#fde100" },
+      { name:"Manchester City", sub:"", period:"22–現在", goals:172, apps:201, assists:33, color:"#6caddf", note:"史上最速150G" },
+      { name:"🇳🇴 ノルウェー代表", sub:"", period:"19–現在", goals:51, apps:54, assists:8, color:"#ef2b2d", note:"歴代1位" }
+    ],
+    competitions: [
+      { name:"Premier League", cat:"league", goals:115, apps:138, color:"#3d195b", note:"2×得点王(23,24)" },
+      { name:"Bundesliga", cat:"league", goals:62, apps:67, color:"#d3010c" },
+      { name:"UEFA Champions League", cat:"european", goals:57, apps:60, color:"#0d2960", note:"50G最速・最年少" },
+      { name:"Eliteserien", cat:"league", goals:16, apps:39, color:"#003c8b" },
+      { name:"Austrian Bundesliga", cat:"league", goals:17, apps:16, color:"#e30613" },
+      { name:"WC Qualifying", cat:"national", goals:24, apps:23, color:"#003594", note:"単一予選で歴代最多級" },
+      { name:"Euro Qualifying", cat:"national", goals:14, apps:18, color:"#001f5b" },
+      { name:"Nations League", cat:"national", goals:10, apps:11, color:"#001f5b" },
+      { name:"FA Cup", cat:"cup", goals:14, apps:16, color:"#3d195b", note:"2023優勝" },
+      { name:"EFL Cup", cat:"cup", goals:10, apps:13, color:"#3d195b" },
+      { name:"DFB-Pokal", cat:"cup", goals:9, apps:7, color:"#d3010c" },
+      { name:"Friendly", cat:"national", goals:3, apps:2, color:"#ef2b2d" },
+      { name:"Club World Cup", cat:"club_intl", goals:2, apps:4, color:"#1a3a8a", note:"2023優勝" },
+      { name:"UEFA Super Cup", cat:"european", goals:1, apps:1, color:"#0d2960" },
+      { name:"Community Shield", cat:"cup", goals:0, apps:1, color:"#3d195b" }
+    ],
+    yearly: [
+      [2016,0],[2017,1],[2018,16],[2019,32],[2020,40],[2021,29],[2022,45],
+      [2023,56],[2024,44],[2025,55],[2026,40]
+    ],
+    records: [
+      ["51","ノルウェー代表 歴代1位"],["36","23/24 PL得点記録(38試合)"],["2×","PL得点王"],
+      ["1×","UCL優勝(23)"],["1×","Treble(22/23)"],["57","UCL通算57G(60試合)"],
+      ["1×","CL得点王(20/21)"],["25","史上最年少150ゴール (City)"]
+    ]
+  },
+
+  // ============ KYLIAN MBAPPÉ ============
+  mbappe: {
+    id: "mbappe",
+    name: "KYLIAN MBAPPÉ",
+    short: "MBAPPÉ",
+    nick: "DONATELLO",
+    flag: "🇫🇷",
+    nation: "France",
+    club: "REAL MADRID",
+    shirt: 10,
+    height: 178, weight: 75, foot: "Right",
+    pos: "ST/LW", age: 27,
+    accent: "#1e88e5", accentDeep: "#0d47a1",
+    rating: { ovr:92, pac:97, sho:90, pas:80, dri:91, def:36, phy:78 },
+    totals: { goals: 424, assists: 173, apps: 564 },
+    milestone: 500,
+    clubs: [
+      { name:"AS Monaco", sub:"", period:"15–17", goals:27, apps:60, assists:14, color:"#ce0a2c" },
+      { name:"Paris Saint-Germain", sub:"", period:"17–24", goals:256, apps:308, assists:108, color:"#004170", note:"歴代1位" },
+      { name:"Real Madrid", sub:"", period:"24–現在", goals:86, apps:101, assists:24, color:"#febe10" },
+      { name:"🇫🇷 フランス代表", sub:"", period:"17–現在", goals:55, apps:95, assists:27, color:"#002654", note:"歴代1位射程" }
+    ],
+    competitions: [
+      { name:"Ligue 1", cat:"league", goals:212, apps:246, color:"#091c3e", note:"6×得点王" },
+      { name:"La Liga", cat:"league", goals:55, apps:64, color:"#ee2222", note:"24/25 ピチーチ・ゴールデンシュー" },
+      { name:"UEFA Champions League", cat:"european", goals:69, apps:103, color:"#0d2960", note:"50G最速級" },
+      { name:"FIFA World Cup", cat:"national", goals:14, apps:14, color:"#003594", note:"22決勝ハットトリック・歴代1位" },
+      { name:"WC Qualifying", cat:"national", goals:18, apps:22, color:"#003594" },
+      { name:"Euro Qualifying", cat:"national", goals:10, apps:11, color:"#001f5b" },
+      { name:"UEFA Euro", cat:"national", goals:3, apps:11, color:"#001f5b" },
+      { name:"Nations League", cat:"national", goals:6, apps:14, color:"#001f5b", note:"2021優勝" },
+      { name:"Coupe de France", cat:"cup", goals:37, apps:42, color:"#091c3e" },
+      { name:"Coupe de la Ligue", cat:"cup", goals:13, apps:14, color:"#091c3e" },
+      { name:"Trophée des Champions", cat:"cup", goals:11, apps:8, color:"#091c3e" },
+      { name:"Copa del Rey", cat:"cup", goals:4, apps:6, color:"#ee2222" },
+      { name:"Supercopa", cat:"cup", goals:2, apps:3, color:"#fdb913" },
+      { name:"UEFA Super Cup", cat:"european", goals:1, apps:1, color:"#0d2960", note:"2024優勝" },
+      { name:"Club World Cup", cat:"club_intl", goals:5, apps:5, color:"#1a3a8a" },
+      { name:"Friendly", cat:"national", goals:4, apps:23, color:"#002654" }
+    ],
+    yearly: [
+      [2015,0],[2016,3],[2017,26],[2018,46],[2019,42],[2020,33],[2021,46],
+      [2022,57],[2023,55],[2024,52],[2025,52],[2026,12]
+    ],
+    records: [
+      ["2018","19歳でW杯優勝・大会ヤングプレイヤー賞"],["2022","W杯決勝史上初ハットトリック"],
+      ["6×","Ligue 1得点王"],["1×","ピチーチ賞(24/25)"],["1×","ゴールデンシュー(24/25)"],
+      ["55","フランス代表 歴代1位射程内"],["256","PSG歴代最多"],["27","26歳328日で400G(ペレに次ぐ最速)"]
+    ]
+  },
+
+  // ============ LAMINE YAMAL (次世代の希望) ============
+  yamal: {
+    id: "yamal",
+    name: "LAMINE YAMAL",
+    short: "YAMAL",
+    nick: "EL NIÑO",
+    flag: "🇪🇸",
+    nation: "Spain",
+    club: "FC BARCELONA",
+    shirt: 10,
+    height: 180, weight: 72, foot: "Left",
+    pos: "RW", age: 18,
+    accent: "#ee2222", accentDeep: "#a50044",
+    rating: { ovr:89, pac:84, sho:81, pas:87, dri:91, def:33, phy:60 },
+    totals: { goals: 54, assists: 49, apps: 157 },
+    milestone: 100,
+    clubs: [
+      { name:"FC Barcelona", sub:"", period:"23–現在", goals:54, apps:157, assists:49, color:"#a50044", note:"史上最年少100試合出場" },
+      { name:"🇪🇸 スペイン代表", sub:"", period:"23–現在", goals:12, apps:30, assists:12, color:"#ee2222", note:"史上最年少代表出場・得点" }
+    ],
+    competitions: [
+      { name:"La Liga", cat:"league", goals:32, apps:80, color:"#ee2222", note:"24/25 リーグ優勝" },
+      { name:"UEFA Champions League", cat:"european", goals:12, apps:25, color:"#0d2960", note:"最年少UCL得点" },
+      { name:"Copa del Rey", cat:"cup", goals:6, apps:14, color:"#ee2222", note:"24/25 優勝" },
+      { name:"Supercopa", cat:"cup", goals:3, apps:8, color:"#fdb913", note:"2×優勝" },
+      { name:"UEFA Euro", cat:"national", goals:1, apps:7, color:"#001f5b", note:"2024優勝・最年少出場" },
+      { name:"Euro Qualifying", cat:"national", goals:1, apps:2, color:"#001f5b", note:"史上最年少代表ゴール" },
+      { name:"WC Qualifying", cat:"national", goals:3, apps:6, color:"#003594" },
+      { name:"Nations League", cat:"national", goals:5, apps:10, color:"#001f5b", note:"2023優勝" },
+      { name:"Friendly", cat:"national", goals:2, apps:5, color:"#ee2222" },
+      { name:"Club World Cup", cat:"club_intl", goals:1, apps:1, color:"#1a3a8a" }
+    ],
+    yearly: [
+      [2023,7],[2024,18],[2025,23],[2026,6]
+    ],
+    records: [
+      ["18","史上最年少EURO本大会出場(16歳)"],["1","史上最年少EUROゴール"],["2024","EURO 2024優勝・大会ベストヤングプレイヤー"],
+      ["1×","コパミーノ(2024年Kopa Trophy受賞)"],["2×","FIFA FIFPro World XI(24,25)"],
+      ["1","史上最年少Barcelona100試合出場"],["100M€","リリース条項10億€・市場最高額級"],["2","La Liga優勝(24/25)"]
+    ]
+  }
+};
+
+// Player switch order (display)
+const PLAYER_ORDER = ['cr7', 'messi', 'neymar', 'kane', 'zlatan', 'suarez', 'benzema', 'lewa', 'haaland', 'mbappe', 'yamal'];
+
+// Birth years for age conversion
+const BIRTH_YEAR = {
+  cr7: 1985, messi: 1987, neymar: 1992, kane: 1993,
+  zlatan: 1981, suarez: 1987, benzema: 1987, lewa: 1988,
+  haaland: 2000, mbappe: 1998, yamal: 2007
+};
+
+// ===== ASSIST KINGS DATABASE =====
+// Top 20 by career assists (club + country, all competitions)
+// Sources: Telegraph 21世紀ランキング, FBref, Transfermarkt, club records
+const ASSIST_TOP10 = [
+  // TOP 10
+  {
+    rank: 1, name: "LIONEL MESSI", short: "MESSI", flag: "🇦🇷",
+    assists: 410, goals: 909, apps: 1152,
+    clubs: "Barcelona / PSG / Inter Miami / Argentina",
+    color: "#75aadb", inDB: 'messi',
+    highlight: "歴代1位・La Liga 192A単独記録"
+  },
+  {
+    rank: 2, name: "FERENC PUSKÁS", short: "PUSKÁS", flag: "🇭🇺",
+    assists: 404, goals: 802, apps: 612,
+    clubs: "Honvéd / Real Madrid / Hungary",
+    color: "#e30613",
+    highlight: "(伝説的記録・1943-66)"
+  },
+  {
+    rank: 3, name: "PELÉ", short: "PELÉ", flag: "🇧🇷",
+    assists: 369, goals: 767, apps: 831,
+    clubs: "Santos / NY Cosmos / Brazil",
+    color: "#009639",
+    highlight: "3×W杯優勝(史上唯一)"
+  },
+  {
+    rank: 4, name: "JOHAN CRUYFF", short: "CRUYFF", flag: "🇳🇱",
+    assists: 358, goals: 401, apps: 663,
+    clubs: "Ajax / Barcelona / Netherlands",
+    color: "#ff6c00",
+    highlight: "トータルフットボールの体現者"
+  },
+  {
+    rank: 5, name: "THOMAS MÜLLER", short: "MÜLLER", flag: "🇩🇪",
+    assists: 286, goals: 310, apps: 902,
+    clubs: "Bayern Munich / Vancouver / Germany",
+    color: "#fecc00",
+    highlight: "Raumdeuter・2014 W杯優勝"
+  },
+  {
+    rank: 6, name: "LUIS SUÁREZ", short: "SUÁREZ", flag: "🇺🇾",
+    assists: 280, goals: 588, apps: 1004,
+    clubs: "Ajax / Liverpool / Barça / Atléti / Miami",
+    color: "#5cbfeb", inDB: 'suarez',
+    highlight: "メッシ・ネイマール時代の名コンビ"
+  },
+  {
+    rank: 7, name: "RYAN GIGGS", short: "GIGGS", flag: "🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+    assists: 277, goals: 168, apps: 1009,
+    clubs: "Manchester United (1990–2014)",
+    color: "#da291c",
+    highlight: "PL通算162A・歴代1位（長きにわたり）"
+  },
+  {
+    rank: 8, name: "CRISTIANO RONALDO", short: "RONALDO", flag: "🇵🇹",
+    assists: 261, goals: 971, apps: 1321,
+    clubs: "Sporting / MUN / Real / Juve / Nassr / Portugal",
+    color: "#c9a14a", inDB: 'cr7',
+    highlight: "UCLアシスト歴代1位(42)"
+  },
+  {
+    rank: 9, name: "MESUT ÖZIL", short: "ÖZIL", flag: "🇩🇪",
+    assists: 256, goals: 106, apps: 668,
+    clubs: "Schalke / Bremen / Real / Arsenal / Fenerbahçe",
+    color: "#aaaaaa",
+    highlight: "アシスト/試合率0.39 (歴代最高級)"
+  },
+  {
+    rank: 10, name: "ÁNGEL DI MARÍA", short: "DI MARÍA", flag: "🇦🇷",
+    assists: 252, goals: 218, apps: 882,
+    clubs: "Rosario / Benfica / Real / MUN / PSG / Juve",
+    color: "#75aadb",
+    highlight: "CLアシスト歴代2位 / W杯決勝得点"
+  },
+  // 11-20
+  {
+    rank: 11, name: "NEYMAR JR", short: "NEYMAR", flag: "🇧🇷",
+    assists: 246, goals: 449, apps: 819,
+    clubs: "Santos / Barça / PSG / Al Hilal",
+    color: "#fedf00", inDB: 'neymar',
+    highlight: "ブラジル代表アシスト歴代1位"
+  },
+  {
+    rank: 12, name: "KEVIN DE BRUYNE", short: "DE BRUYNE", flag: "🇧🇪",
+    assists: 245, goals: 138, apps: 700,
+    clubs: "Genk / Wolfsburg / Man City / Napoli",
+    color: "#ed1c24",
+    highlight: "PL通算119A・最速100A達成"
+  },
+  {
+    rank: 13, name: "DUŠAN TADIĆ", short: "TADIĆ", flag: "🇷🇸",
+    assists: 240, goals: 218, apps: 720,
+    clubs: "Vojvodina / Twente / Southampton / Ajax / Fenerbahçe",
+    color: "#c8102e",
+    highlight: "Ajaxアシスト112・Eredivisie最強パサー"
+  },
+  {
+    rank: 14, name: "DAVID BECKHAM", short: "BECKHAM", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    assists: 240, goals: 130, apps: 718,
+    clubs: "MUN / Real / LA Galaxy / Milan / PSG / England",
+    color: "#012169",
+    highlight: "クロスの芸術家・FK 65G中30G"
+  },
+  {
+    rank: 15, name: "CESC FÀBREGAS", short: "FÀBREGAS", flag: "🇪🇸",
+    assists: 230, goals: 130, apps: 845,
+    clubs: "Arsenal / Barça / Chelsea / Monaco / Como",
+    color: "#dc143c",
+    highlight: "PL最多10+Aシーズン6回・2010 W杯決勝アシスト"
+  },
+  {
+    rank: 16, name: "ZLATAN IBRAHIMOVIĆ", short: "ZLATAN", flag: "🇸🇪",
+    assists: 221, goals: 573, apps: 988,
+    clubs: "Ajax / Juve / Inter / Barça / Milan / PSG / MUN / LA",
+    color: "#fecc00", inDB: 'zlatan',
+    highlight: "ストライカーとして異例の221A"
+  },
+  {
+    rank: 17, name: "DRIES MERTENS", short: "MERTENS", flag: "🇧🇪",
+    assists: 215, goals: 270, apps: 800,
+    clubs: "Utrecht / PSV / Napoli / Galatasaray / Belgium",
+    color: "#ff8c00",
+    highlight: "ナポリ歴代1位ゴール (148G)"
+  },
+  {
+    rank: 18, name: "XAVI HERNÁNDEZ", short: "XAVI", flag: "🇪🇸",
+    assists: 210, goals: 85, apps: 916,
+    clubs: "Barcelona / Al Sadd / Spain",
+    color: "#a50044",
+    highlight: "Tiki-Taka司令塔・パス成功率の伝説"
+  },
+  {
+    rank: 19, name: "DAVID SILVA", short: "D.SILVA", flag: "🇪🇸",
+    assists: 205, goals: 100, apps: 770,
+    clubs: "Valencia / Man City / Real Sociedad / Spain",
+    color: "#6caddf",
+    highlight: "Man City黄金期の創造者・93A"
+  },
+  {
+    rank: 20, name: "DANI ALVES", short: "D.ALVES", flag: "🇧🇷",
+    assists: 203, goals: 49, apps: 868,
+    clubs: "Bahia / Sevilla / Barça / Juve / PSG / São Paulo",
+    color: "#009639",
+    highlight: "歴代最多トロフィー獲得 (43冠) ・SBが世界1のアシスト数"
+  }
+];
+
+// Bonus: more modern playmakers just outside top 20
+const ASSIST_HONORABLE = [
+  { name: "KARIM BENZEMA", flag: "🇫🇷", assists: 202, goals: 501, note: "21位 · 2022バロンドール" },
+  { name: "FRANCK RIBÉRY", flag: "🇫🇷", assists: 196, goals: 192, note: "Bayern黄金期・FFFバロンドール疑惑" },
+  { name: "HULK", flag: "🇧🇷", assists: 189, goals: 271, note: "Porto/Zenit/SIPG · 異能のサイド" },
+  { name: "THIERRY HENRY", flag: "🇫🇷", assists: 185, goals: 360, note: "Arsenal Invincibles・PL最強FW" },
+  { name: "ANDRÉS INIESTA", flag: "🇪🇸", assists: 178, goals: 92, note: "2010 W杯決勝決勝点" }
+];
+
+
+// ===== ADAPTER: Convert PLAYERS schema → existing CR7 shape =====
+function adaptPlayer(pkey) {
+  const p = PLAYERS[pkey];
+  return {
+    _meta: p,
+    totals: p.totals,
+    clubs: p.clubs.map(c => ({
+      name: c.name, sub: c.sub || '',
+      period: c.period, goals: c.goals, apps: c.apps,
+      assists: c.assists, color: c.color
+    })),
+    competitions: p.competitions.map(c => ({
+      name: c.name, category: c.cat, goals: c.goals,
+      apps: c.apps, color: c.color, note: c.note || ''
+    })),
+    yearly: p.yearly.map(([year, goals]) => ({
+      year, goals,
+      assists: Math.round(goals * (p.totals.assists / p.totals.goals)),
+      age: year - (BIRTH_YEAR[p.id] || 1990)
+    })),
+    moments: (p.records || []).slice(0,8).map((r,i) => ({
+      year: 2005 + i*3,
+      event: r[1] + ' (' + r[0] + ')',
+      goalAt: Math.round(p.totals.goals * (i+1) / 9)
+    }))
+  };
+}
+
+// CR7 is the active player data, dynamically replaced
+let CR7 = adaptPlayer('cr7');
+let activePlayerKey = 'cr7';
+
+// ===== Player switcher =====
+function renderPlayerSwitcher() {
+  const wrap = document.getElementById('playerSwitcher');
+  wrap.innerHTML = PLAYER_ORDER.map(k => {
+    const p = PLAYERS[k];
+    return `<button class="pswitch ${k === activePlayerKey ? 'active' : ''}" data-key="${k}"
+      style="--player-accent:${p.accent};">
+      <div class="pswitch-flag">${p.flag}</div>
+      <div class="pswitch-name">${p.short}</div>
+      <div class="pswitch-goals">${p.totals.goals}</div>
+    </button>`;
+  }).join('');
+  wrap.querySelectorAll('.pswitch').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.key;
+      switchPlayer(k);
+    });
+  });
+}
+
+function switchPlayer(pkey) {
+  if (pkey === activePlayerKey) return;
+  activePlayerKey = pkey;
+  CR7 = adaptPlayer(pkey);
+
+  // Reset rendered flags
+  window.clubChartRendered = false;
+  window.trendChartRendered = false;
+  expandedComp = null;
+
+  // Update header / brand
+  const p = PLAYERS[pkey];
+  document.getElementById('brandMark').textContent = p.nick.slice(0,3).toUpperCase();
+  document.getElementById('brandText').textContent = p.short + ' · ULTIMATE DASHBOARD';
+  document.documentElement.style.setProperty('--gold', p.accent);
+  document.documentElement.style.setProperty('--gold-bright', p.accent);
+
+  // Re-render switcher (highlight)
+  renderPlayerSwitcher();
+
+  // Update player card
+  updatePlayerCard(p);
+
+  // Re-init all panels
+  initOverview();
+  initClubs();
+  renderCompList();
+  initPeakYears();
+  renderRecordsPanel();
+
+  // Re-render charts if visible
+  const activeTab = document.querySelector('.tab.active').dataset.panel;
+  if (activeTab === 'clubs') renderClubChartSafe();
+  if (activeTab === 'trends') renderTrendChartSafe();
+}
+
+function updatePlayerCard(p) {
+  const card = document.querySelector('.player-card');
+  if (!card) return;
+  card.innerHTML = `
+    <div class="card-shine"></div>
+    <div class="pc-top">
+      <div class="pc-overall">
+        <div class="pc-rating">${p.rating.ovr}</div>
+        <div class="pc-pos">${p.pos}</div>
+        <div class="pc-flag">${p.flag}</div>
+      </div>
+      <div class="pc-club-badge">
+        <div class="pc-club">${p.club}</div>
+        <div class="pc-shirt">${String(p.shirt).padStart(2,'0')}</div>
+      </div>
+    </div>
+    <div class="pc-portrait">⚽</div>
+    <div class="pc-name">${p.short}</div>
+    <div class="pc-nickname">${p.nick}</div>
+    <div class="pc-stats">
+      <div class="pc-stat"><span class="pc-stat-label">PAC</span><span class="pc-stat-val">${p.rating.pac}</span></div>
+      <div class="pc-stat"><span class="pc-stat-label">SHO</span><span class="pc-stat-val">${p.rating.sho}</span></div>
+      <div class="pc-stat"><span class="pc-stat-label">PAS</span><span class="pc-stat-val">${p.rating.pas}</span></div>
+      <div class="pc-stat"><span class="pc-stat-label">DRI</span><span class="pc-stat-val">${p.rating.dri}</span></div>
+      <div class="pc-stat"><span class="pc-stat-label">DEF</span><span class="pc-stat-val">${p.rating.def}</span></div>
+      <div class="pc-stat"><span class="pc-stat-label">PHY</span><span class="pc-stat-val">${p.rating.phy}</span></div>
+    </div>
+    <div class="pc-foot-info">
+      <div>H ${p.height}cm / W ${p.weight}kg</div>
+      <div>${p.foot.toUpperCase()} FOOT</div>
+      <div>${typeof p.age === 'number' ? p.age + 'Y' : p.age}</div>
+    </div>
+  `;
+}
+
+// ===== Update records panel =====
+function renderRecordsPanel() {
+  const p = PLAYERS[activePlayerKey];
+  const grid = document.querySelector('.panel[data-panel="records"] .records');
+  if (!grid || !p.records) return;
+  grid.innerHTML = p.records.map(r => `
+    <div class="record"><div class="record-val">${r[0]}</div><div class="record-label">${r[1]}</div></div>
+  `).join('');
+}
+
+// ===== VIEW MODE SWITCHING =====
+document.querySelectorAll('.vm-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.view;
+    document.querySelectorAll('.vm-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelector(`.view-container[data-view="${target}"]`).classList.add('active');
+
+    // Lazy init compare on first open
+    if (target === 'compare' && !window.compareInitialized) {
+      initCompare();
+      window.compareInitialized = true;
+    }
+    // Lazy init assists on first open
+    if (target === 'assists' && !window.assistsInitialized) {
+      initAssistKings();
+      window.assistsInitialized = true;
+    }
+  });
+});
+
+// ===== ASSIST KINGS PANEL =====
+const akState = { sort: 'assists' };
+
+function renderAkRanking() {
+  const wrap = document.getElementById('akRanking');
+  if (!wrap) return;
+  const sorted = [...ASSIST_TOP10].sort((a, b) => {
+    if (akState.sort === 'assists') return b.assists - a.assists;
+    if (akState.sort === 'goals') return b.goals - a.goals;
+    return (b.assists + b.goals) - (a.assists + a.goals);
+  });
+
+  const maxVal = akState.sort === 'assists' ? sorted[0].assists :
+                 akState.sort === 'goals' ? sorted[0].goals :
+                 (sorted[0].assists + sorted[0].goals);
+
+  wrap.innerHTML = sorted.map((p, i) => {
+    const ga = p.assists + p.goals;
+    const sortVal = akState.sort === 'assists' ? p.assists :
+                    akState.sort === 'goals' ? p.goals : ga;
+    const barPct = (sortVal / maxVal * 100).toFixed(1);
+    const medalCls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+    const clickable = p.inDB ? 'clickable' : '';
+    const linkBadge = p.inDB ? `<div class="ak-link">→ 詳細</div>` : '';
+    return `
+      <div class="ak-row ${medalCls} ${clickable}" data-key="${p.inDB || ''}" style="--ak-bar:${barPct}%">
+        <div class="ak-rank">#${(i + 1).toString().padStart(2, '0')}</div>
+        <div class="ak-flag">${p.flag}</div>
+        <div class="ak-info">
+          <div class="ak-name">${p.name}</div>
+          <div class="ak-clubs">${p.clubs}</div>
+          <div class="ak-highlight">★ ${p.highlight}</div>
+        </div>
+        <div class="ak-stats">
+          <div class="ak-stat-block">
+            <div class="ak-stat-num assist">${p.assists}</div>
+            <div class="ak-stat-label">ASSISTS</div>
+          </div>
+          <div class="ak-stat-block">
+            <div class="ak-stat-num goal">${p.goals}</div>
+            <div class="ak-stat-label">GOALS</div>
+          </div>
+          <div class="ak-stat-block">
+            <div class="ak-stat-num ga">${ga}</div>
+            <div class="ak-stat-label">G+A</div>
+          </div>
+        </div>
+        ${linkBadge}
+      </div>
+    `;
+  }).join('');
+
+  // Click → switch to individual view
+  wrap.querySelectorAll('.ak-row.clickable').forEach(row => {
+    row.addEventListener('click', () => {
+      const key = row.dataset.key;
+      if (!key) return;
+      // Switch to individual view + select player
+      document.querySelector('.vm-btn[data-view="individual"]').click();
+      setTimeout(() => switchPlayer(key), 100);
+    });
+  });
+}
+
+function renderAkChart() {
+  const wrap = document.getElementById('akChartWrap');
+  if (!wrap) return;
+  // Sort by current mode
+  const sorted = [...ASSIST_TOP10].sort((a, b) => {
+    if (akState.sort === 'assists') return b.assists - a.assists;
+    if (akState.sort === 'goals') return b.goals - a.goals;
+    return (b.assists + b.goals) - (a.assists + a.goals);
+  });
+
+  const W = 1200, H = 900;
+  const padL = 180, padR = 90, padT = 30, padB = 36;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const rowH = innerH / sorted.length;
+  const barH = rowH * 0.55;
+
+  // Max scale = max G+A across all
+  const maxGA = Math.max(...sorted.map(p => p.assists + p.goals));
+  const niceMax = Math.ceil(maxGA / 200) * 200;
+  const xScale = v => (v / niceMax) * innerW;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">`;
+
+  // Gridlines + x labels
+  for (let i = 0; i <= 6; i++) {
+    const x = padL + (innerW * i / 6);
+    const v = Math.round(niceMax * i / 6);
+    svg += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${H - padB}" stroke="rgba(245,245,240,0.04)"/>`;
+    svg += `<text x="${x}" y="${H - 14}" text-anchor="middle" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="10">${v}</text>`;
+  }
+
+  // Legend
+  svg += `<g transform="translate(${padL},${padT - 12})">
+    <rect x="0" y="0" width="12" height="6" fill="#75aadb"/>
+    <text x="18" y="6" fill="#f5f5f0" font-family="JetBrains Mono, monospace" font-size="10">ASSISTS</text>
+    <rect x="100" y="0" width="12" height="6" fill="#c9a14a"/>
+    <text x="118" y="6" fill="#f5f5f0" font-family="JetBrains Mono, monospace" font-size="10">GOALS</text>
+  </g>`;
+
+  sorted.forEach((p, i) => {
+    const yCenter = padT + rowH * i + rowH / 2;
+    const yBar = yCenter - barH / 2;
+    const wA = xScale(p.assists);
+    const wG = xScale(p.goals);
+
+    // Name + flag on left
+    svg += `<text x="${padL - 14}" y="${yCenter - 2}" text-anchor="end" fill="#f5f5f0" font-family="Oswald, sans-serif" font-size="13" font-weight="600">${p.flag} ${p.short}</text>`;
+    svg += `<text x="${padL - 14}" y="${yCenter + 12}" text-anchor="end" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="9">#${i + 1}</text>`;
+
+    // Stacked: assists first (blue), then goals (gold)
+    svg += `<rect x="${padL}" y="${yBar}" width="0" height="${barH}" fill="#75aadb">
+      <animate attributeName="width" from="0" to="${wA}" dur="1.0s" fill="freeze" begin="${i*0.06}s"/>
+    </rect>`;
+    svg += `<rect x="${padL}" y="${yBar}" width="0" height="${barH}" fill="${p.color}" transform="translate(0,0)">
+      <animate attributeName="x" from="${padL}" to="${padL + wA}" dur="0.001s" fill="freeze" begin="${i*0.06 + 0.5}s"/>
+      <animate attributeName="width" from="0" to="${wG}" dur="1.0s" fill="freeze" begin="${i*0.06 + 0.5}s"/>
+    </rect>`;
+
+    // Numbers inside bars
+    svg += `<text x="${padL + wA/2}" y="${yCenter + 5}" text-anchor="middle" fill="#fff" font-family="Archivo Black, sans-serif" font-size="13" opacity="0">${p.assists}A
+      <animate attributeName="opacity" from="0" to="1" dur="0.3s" fill="freeze" begin="${i*0.06 + 1.2}s"/>
+    </text>`;
+    svg += `<text x="${padL + wA + wG/2}" y="${yCenter + 5}" text-anchor="middle" fill="#000" font-family="Archivo Black, sans-serif" font-size="13" opacity="0">${p.goals}G
+      <animate attributeName="opacity" from="0" to="1" dur="0.3s" fill="freeze" begin="${i*0.06 + 1.6}s"/>
+    </text>`;
+
+    // Total at end
+    svg += `<text x="${padL + wA + wG + 8}" y="${yCenter + 5}" fill="#e8c468" font-family="Archivo Black, sans-serif" font-size="15" opacity="0">${p.assists + p.goals}
+      <animate attributeName="opacity" from="0" to="1" dur="0.4s" fill="freeze" begin="${i*0.06 + 1.8}s"/>
+    </text>`;
+  });
+
+  svg += '</svg>';
+  wrap.innerHTML = svg;
+}
+
+function renderAkHonors() {
+  const wrap = document.getElementById('akHonors');
+  if (!wrap) return;
+  wrap.innerHTML = ASSIST_HONORABLE.map(p => `
+    <div class="ak-honor">
+      <div class="ak-honor-top">
+        <div class="ak-honor-name">${p.name}</div>
+        <div class="ak-honor-flag">${p.flag}</div>
+      </div>
+      <div class="ak-honor-stats">
+        <span class="ak-honor-a">${p.assists} A</span>
+        <span class="ak-honor-g">${p.goals} G</span>
+        <span style="color:#8a8a85;">${p.assists + p.goals} GA</span>
+      </div>
+      <div class="ak-honor-note">${p.note}</div>
+    </div>
+  `).join('');
+}
+
+function initAssistKings() {
+  document.querySelectorAll('.seg[data-sort]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.seg[data-sort]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      akState.sort = btn.dataset.sort;
+      renderAkRanking();
+      renderAkChart();
+    });
+  });
+  renderAkRanking();
+  renderAkChart();
+  renderAkHonors();
+}
+
+// ===== TAB SWITCHING =====
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.panel;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelector(`.panel[data-panel="${target}"]`).classList.add('active');
+
+    // Lazy render charts
+    if (target === 'clubs' && !window.clubChartRendered) renderClubChartSafe();
+    if (target === 'trends' && !window.trendChartRendered) renderTrendChartSafe();
+  });
+});
+
+// ===== SEASON-BY-SEASON DATA per competition =====
+// Values are goals per season (some 2022/23, 2023/24 etc. shown as 2023, 2024)
+// Sources: messivsronaldo.app, FBref, Wikipedia
+const SEASON_DATA = {
+  "UEFA Champions League": {
+    series: "season",
+    data: [
+      {label:"02/03", g:0}, {label:"03/04", g:0}, {label:"04/05", g:0},
+      {label:"05/06", g:1}, {label:"06/07", g:3}, {label:"07/08", g:8},
+      {label:"08/09", g:4}, {label:"09/10", g:7}, {label:"10/11", g:6},
+      {label:"11/12", g:10}, {label:"12/13", g:12}, {label:"13/14", g:17},
+      {label:"14/15", g:10}, {label:"15/16", g:16}, {label:"16/17", g:12},
+      {label:"17/18", g:15}, {label:"18/19", g:6}, {label:"19/20", g:4},
+      {label:"20/21", g:4}, {label:"21/22", g:6}, {label:"22/23", g:0},
+      {label:"24/25", g:0}
+    ],
+    note: "歴代最多140G。2013/14シーズンの17ゴールは単一シーズン記録"
+  },
+  "La Liga": {
+    series: "season",
+    data: [
+      {label:"09/10", g:26}, {label:"10/11", g:40}, {label:"11/12", g:46},
+      {label:"12/13", g:34}, {label:"13/14", g:31}, {label:"14/15", g:48},
+      {label:"15/16", g:35}, {label:"16/17", g:25}, {label:"17/18", g:26}
+    ],
+    note: "9シーズンで311ゴール。3×ピチーチ賞 (10/11, 13/14, 14/15)"
+  },
+  "Premier League": {
+    series: "season",
+    data: [
+      {label:"03/04", g:4}, {label:"04/05", g:5}, {label:"05/06", g:9},
+      {label:"06/07", g:17}, {label:"07/08", g:31}, {label:"08/09", g:18},
+      {label:"21/22", g:18}, {label:"22/23", g:1}
+    ],
+    note: "07/08は31G で得点王・初バロンドール獲得"
+  },
+  "Serie A": {
+    series: "season",
+    data: [
+      {label:"18/19", g:21}, {label:"19/20", g:31}, {label:"20/21", g:29}
+    ],
+    note: "20/21は29Gで得点王 (英伊西の3カ国で得点王の史上初)"
+  },
+  "Saudi Pro League": {
+    series: "season",
+    data: [
+      {label:"22/23", g:14}, {label:"23/24", g:35}, {label:"24/25", g:25}, {label:"25/26", g:26}
+    ],
+    note: "23/24の35Gはリーグ単一シーズン新記録"
+  },
+  "FIFA World Cup": {
+    series: "tournament",
+    data: [
+      {label:"2006", g:1}, {label:"2010", g:1}, {label:"2014", g:1},
+      {label:"2018", g:4}, {label:"2022", g:1}
+    ],
+    note: "5大会出場 (男子最多)。1986〜のメッシ・C・ロナウドのみが達成"
+  },
+  "UEFA Euro": {
+    series: "tournament",
+    data: [
+      {label:"2004", g:2}, {label:"2008", g:1}, {label:"2012", g:3},
+      {label:"2016", g:3}, {label:"2020", g:5}, {label:"2024", g:0}
+    ],
+    note: "歴代最多14G。2020で5G・通算最多更新、2016優勝"
+  },
+  "UEFA Nations League": {
+    series: "season",
+    data: [
+      {label:"18/19", g:3}, {label:"20/21", g:1},
+      {label:"22/23", g:1}, {label:"24/25", g:9}
+    ],
+    note: "2019・2025優勝。24/25は9G で大会得点王"
+  },
+  "World Cup Qualifying": {
+    series: "cycle",
+    data: [
+      {label:"06予選", g:7}, {label:"10予選", g:1}, {label:"14予選", g:5},
+      {label:"18予選", g:15}, {label:"22予選", g:6}, {label:"26予選", g:7}
+    ],
+    note: "通算41G。各サイクルで継続的に得点"
+  },
+  "Euro Qualifying": {
+    series: "cycle",
+    data: [
+      {label:"04予選", g:0}, {label:"08予選", g:0}, {label:"12予選", g:7},
+      {label:"16予選", g:5}, {label:"20予選", g:11}, {label:"24予選", g:10}
+    ],
+    note: "予選で38G、本大会14Gと合わせEURO通算52G"
+  },
+  "Copa del Rey": {
+    series: "season",
+    data: [
+      {label:"09/10", g:0}, {label:"10/11", g:7}, {label:"11/12", g:3},
+      {label:"12/13", g:4}, {label:"13/14", g:3}, {label:"14/15", g:1},
+      {label:"15/16", g:0}, {label:"16/17", g:2}, {label:"17/18", g:2}
+    ],
+    note: "10/11シーズンに7G・初優勝に貢献"
+  },
+  "FA Cup": {
+    series: "season",
+    data: [
+      {label:"03/04", g:2}, {label:"04/05", g:4}, {label:"05/06", g:2},
+      {label:"06/07", g:3}, {label:"07/08", g:2}, {label:"08/09", g:0},
+      {label:"21/22", g:0}
+    ],
+    note: "03/04に初優勝・決勝で1G"
+  },
+  "Coppa Italia": {
+    series: "season",
+    data: [
+      {label:"18/19", g:0}, {label:"19/20", g:2}, {label:"20/21", g:2}
+    ],
+    note: "20/21優勝"
+  },
+  "FIFA Club World Cup": {
+    series: "tournament",
+    data: [
+      {label:"2008", g:0}, {label:"2014", g:1}, {label:"2016", g:1},
+      {label:"2017", g:2}, {label:"2025", g:3}
+    ],
+    note: "4度優勝に貢献 (2014/16/17/18)"
+  },
+  "International Friendly": {
+    series: "year",
+    data: [
+      {label:"03-05", g:2}, {label:"06-08", g:2}, {label:"09-11", g:3},
+      {label:"12-14", g:2}, {label:"15-17", g:5}, {label:"18-20", g:4},
+      {label:"21-23", g:6}, {label:"24-26", g:2}
+    ],
+    note: "通算26G・親善試合でも継続的に得点"
+  },
+  "AFC Champions League Elite": {
+    series: "season",
+    data: [
+      {label:"23/24", g:2}, {label:"24/25", g:3}
+    ],
+    note: "アル・ナスル加入後アジアCL初参戦"
+  },
+  "Saudi King's Cup": {
+    series: "season",
+    data: [
+      {label:"22/23", g:2}, {label:"23/24", g:2}, {label:"24/25", g:2}
+    ]
+  },
+  "Saudi Super Cup": {
+    series: "season",
+    data: [
+      {label:"23/24", g:3}, {label:"24/25", g:3}, {label:"25/26", g:3}
+    ],
+    note: "2026年Sup-Cup決勝で100Gアル・ナスル節目"
+  },
+  "Arab Club Champions Cup": {
+    series: "tournament",
+    data: [{label:"2023", g:6}],
+    note: "2023優勝・大会得点王"
+  },
+  "Supercopa de España": {
+    series: "season",
+    data: [{label:"09-17", g:4}],
+    note: "レアル・マドリード時代に4G"
+  },
+  "EFL Cup": {
+    series: "season",
+    data: [
+      {label:"03-09", g:6}, {label:"21/22", g:1}
+    ],
+    note: "マンU時代のリーグカップ"
+  }
+};
+
+// Trend chart series state
+const activeSeries = { goals: true, assists: true, cumG: false, cumA: false };
+
+function renderClubChartSafe() { renderClubChart(); }
+function renderTrendChartSafe() { renderTrendChart(); }
+
+function renderClubChart() {
+  const wrap = document.getElementById('clubChartWrap');
+  if (!wrap) return;
+  // Merge clubs with same name (e.g., MUN 1st + 2nd spell) and use current player's data
+  const mergeMap = {};
+  CR7.clubs.forEach(c => {
+    const key = c.name.replace(/^[🇵🇹🇦🇷🇧🇷🇸🇪🇫🇷🇵🇱🏴󠁧󠁢󠁥󠁮󠁧󠁿]\s*/, '').trim();
+    if (!mergeMap[key]) {
+      mergeMap[key] = { name: c.name, goals: 0, assists: 0, color: c.color };
+    }
+    mergeMap[key].goals += c.goals;
+    mergeMap[key].assists += c.assists;
+  });
+  const merged = Object.values(mergeMap)
+    .filter(m => m.goals >= 5) // hide tiny loan spells
+    .sort((a,b)=>b.goals-a.goals);
+
+  const W = 1200, H = 420;
+  const padLeft = 180, padRight = 60, padTop = 20, padBot = 30;
+  const innerW = W - padLeft - padRight;
+  const innerH = H - padTop - padBot;
+  const rowH = innerH / merged.length;
+  const barH = rowH * 0.35;
+  const maxG = Math.max(...merged.map(m => m.goals));
+  const niceMax = Math.ceil(maxG / 100) * 100;
+  const xScale = v => (v / niceMax) * innerW;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">
+    <defs>
+      <linearGradient id="gridFade" x1="0" x2="1">
+        <stop offset="0" stop-color="rgba(245,245,240,0.06)"/>
+        <stop offset="1" stop-color="rgba(245,245,240,0.02)"/>
+      </linearGradient>
+    </defs>`;
+
+  // Gridlines
+  for (let i = 0; i <= 5; i++) {
+    const x = padLeft + (innerW * i / 5);
+    const val = Math.round(niceMax * i / 5);
+    svg += `<line x1="${x}" y1="${padTop}" x2="${x}" y2="${H - padBot}" stroke="rgba(245,245,240,0.05)"/>`;
+    svg += `<text x="${x}" y="${H - 10}" text-anchor="middle" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="10">${val}</text>`;
+  }
+
+  // Bars
+  merged.forEach((m, i) => {
+    const yCenter = padTop + rowH * i + rowH / 2;
+    const yG = yCenter - barH - 1;
+    const yA = yCenter + 1;
+    const wG = xScale(m.goals);
+    const wA = xScale(m.assists);
+
+    // Label
+    svg += `<text x="${padLeft - 14}" y="${yCenter + 5}" text-anchor="end" fill="#f5f5f0" font-family="Oswald, sans-serif" font-size="13" font-weight="600">${m.name}</text>`;
+
+    // Goal bar
+    svg += `<rect class="bar-g" x="${padLeft}" y="${yG}" width="0" height="${barH}" fill="${m.color}">
+      <animate attributeName="width" from="0" to="${wG}" dur="1.2s" fill="freeze" begin="${0.1 + i*0.06}s"/>
+    </rect>`;
+    svg += `<text x="${padLeft + wG + 6}" y="${yG + barH/2 + 4}" fill="${m.color}" font-family="Archivo Black, sans-serif" font-size="14">${m.goals}<animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="${0.6 + i*0.06}s" fill="freeze"/></text>`;
+
+    // Assist bar
+    svg += `<rect class="bar-a" x="${padLeft}" y="${yA}" width="0" height="${barH}" fill="${m.color}" opacity="0.4">
+      <animate attributeName="width" from="0" to="${wA}" dur="1.2s" fill="freeze" begin="${0.2 + i*0.06}s"/>
+    </rect>`;
+    svg += `<text x="${padLeft + wA + 6}" y="${yA + barH/2 + 4}" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="11">${m.assists}A<animate attributeName="opacity" from="0" to="1" dur="0.4s" begin="${0.7 + i*0.06}s" fill="freeze"/></text>`;
+  });
+
+  // Legend
+  svg += `<g transform="translate(${padLeft},${padTop - 5})">
+    <rect x="0" y="0" width="12" height="6" fill="#c9a14a"/>
+    <text x="18" y="6" fill="#f5f5f0" font-family="JetBrains Mono, monospace" font-size="10">GOALS</text>
+    <rect x="80" y="0" width="12" height="6" fill="#c9a14a" opacity="0.4"/>
+    <text x="98" y="6" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="10">ASSISTS</text>
+  </g>`;
+
+  svg += '</svg>';
+  wrap.innerHTML = svg;
+  window.clubChartRendered = true;
+}
+
+function renderTrendChart() {
+  const wrap = document.getElementById('trendChartWrap');
+  if (!wrap) return;
+
+  let cumG = 0, cumA = 0;
+  const cumulative = CR7.yearly.map(y => {
+    cumG += y.goals; cumA += y.assists;
+    return { year: y.year, cumG, cumA };
+  });
+
+  const W = 1200, H = 420;
+  const padLeft = 50, padRight = 60, padTop = 30, padBot = 50;
+  const innerW = W - padLeft - padRight;
+  const innerH = H - padTop - padBot;
+
+  // Determine if any cumulative is active
+  const showCumG = activeSeries.cumG;
+  const showCumA = activeSeries.cumA;
+  const showG = activeSeries.goals;
+  const showA = activeSeries.assists;
+
+  // Max values for two scales
+  const maxBar = Math.max(...CR7.yearly.map(y => Math.max(y.goals, y.assists))) || 1;
+  const niceBarMax = Math.ceil(maxBar / 10) * 10;
+  const maxCum = Math.max(cumulative[cumulative.length-1].cumG, cumulative[cumulative.length-1].cumA);
+  const niceCumMax = Math.ceil(maxCum / 100) * 100;
+
+  const n = CR7.yearly.length;
+  const xStep = innerW / (n - 1);
+  const groupW = xStep * 0.7;
+  const barW = (groupW - 4) / 2;
+
+  const yBar = v => padTop + innerH - (v / niceBarMax) * innerH;
+  const yCum = v => padTop + innerH - (v / niceCumMax) * innerH;
+  const xAt = i => padLeft + i * xStep;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">`;
+
+  // Y-axis left (per-year)
+  for (let i = 0; i <= 4; i++) {
+    const y = padTop + innerH * i / 4;
+    const v = Math.round(niceBarMax * (4 - i) / 4);
+    svg += `<line x1="${padLeft}" y1="${y}" x2="${W - padRight}" y2="${y}" stroke="rgba(245,245,240,0.05)"/>`;
+    svg += `<text x="${padLeft - 8}" y="${y + 4}" text-anchor="end" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="9">${v}</text>`;
+  }
+  // Y-axis right (cumulative)
+  if (showCumG || showCumA) {
+    for (let i = 0; i <= 4; i++) {
+      const y = padTop + innerH * i / 4;
+      const v = Math.round(niceCumMax * (4 - i) / 4);
+      svg += `<text x="${W - padRight + 8}" y="${y + 4}" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="9">${v}</text>`;
+    }
+  }
+
+  // X axis
+  CR7.yearly.forEach((yObj, i) => {
+    if (i % 2 === 0 || i === n - 1) {
+      const x = xAt(i);
+      svg += `<text x="${x}" y="${H - 28}" text-anchor="middle" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="10">${yObj.year}</text>`;
+      svg += `<text x="${x}" y="${H - 15}" text-anchor="middle" fill="#5a5a55" font-family="JetBrains Mono, monospace" font-size="8">A${yObj.age}</text>`;
+    }
+  });
+
+  // Bars
+  CR7.yearly.forEach((yObj, i) => {
+    const cx = xAt(i);
+    if (showG) {
+      const h = innerH - (yBar(yObj.goals) - padTop);
+      const x = cx - barW - 1;
+      const y = yBar(yObj.goals);
+      svg += `<rect x="${x}" y="${padTop + innerH}" width="${barW}" height="0" fill="#c9a14a" opacity="0.9">
+        <animate attributeName="y" from="${padTop + innerH}" to="${y}" dur="0.8s" fill="freeze" begin="${i*0.025}s"/>
+        <animate attributeName="height" from="0" to="${h}" dur="0.8s" fill="freeze" begin="${i*0.025}s"/>
+        <title>${yObj.year}: ${yObj.goals} goals</title>
+      </rect>`;
+    }
+    if (showA) {
+      const h = innerH - (yBar(yObj.assists) - padTop);
+      const x = cx + 1;
+      const y = yBar(yObj.assists);
+      svg += `<rect x="${x}" y="${padTop + innerH}" width="${barW}" height="0" fill="#c8102e" opacity="0.85">
+        <animate attributeName="y" from="${padTop + innerH}" to="${y}" dur="0.8s" fill="freeze" begin="${i*0.025 + 0.1}s"/>
+        <animate attributeName="height" from="0" to="${h}" dur="0.8s" fill="freeze" begin="${i*0.025 + 0.1}s"/>
+        <title>${yObj.year}: ${yObj.assists} assists</title>
+      </rect>`;
+    }
+  });
+
+  // Cumulative lines
+  function linePath(points) {
+    return points.map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`)).join(' ');
+  }
+  if (showCumG) {
+    const pts = cumulative.map((c, i) => [xAt(i), yCum(c.cumG)]);
+    const d = linePath(pts);
+    svg += `<path d="${d}" stroke="#f5f5f0" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <animate attributeName="stroke-dasharray" from="0,3000" to="3000,0" dur="1.5s" fill="freeze"/>
+    </path>`;
+    pts.forEach((p, i) => {
+      svg += `<circle cx="${p[0]}" cy="${p[1]}" r="0" fill="#f5f5f0">
+        <animate attributeName="r" from="0" to="3" dur="0.3s" fill="freeze" begin="${1.0 + i*0.04}s"/>
+        <title>${cumulative[i].year}: ${cumulative[i].cumG} cumulative goals</title>
+      </circle>`;
+    });
+  }
+  if (showCumA) {
+    const pts = cumulative.map((c, i) => [xAt(i), yCum(c.cumA)]);
+    const d = linePath(pts);
+    svg += `<path d="${d}" stroke="#8a8a85" stroke-width="2" stroke-dasharray="4 4" fill="none" stroke-linejoin="round">
+      <animate attributeName="stroke-dashoffset" from="100" to="0" dur="1.5s" fill="freeze"/>
+    </path>`;
+    pts.forEach((p, i) => {
+      svg += `<circle cx="${p[0]}" cy="${p[1]}" r="0" fill="#8a8a85">
+        <animate attributeName="r" from="0" to="2.5" dur="0.3s" fill="freeze" begin="${1.0 + i*0.04}s"/>
+      </circle>`;
+    });
+  }
+
+  // Axis labels
+  svg += `<text x="${padLeft}" y="${padTop - 12}" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="1.5" text-transform="uppercase">PER YEAR ↑</text>`;
+  if (showCumG || showCumA) {
+    svg += `<text x="${W - padRight}" y="${padTop - 12}" text-anchor="end" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="1.5">↑ CUMULATIVE</text>`;
+  }
+
+  svg += '</svg>';
+  wrap.innerHTML = svg;
+  window.trendChartRendered = true;
+}
+
+// ===== NUMBER ANIMATION =====
+function animateNumber(el, target, duration = 1800, suffix = '') {
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const val = Math.floor(eased * target);
+    el.textContent = val.toLocaleString() + suffix;
+    if (t < 1) requestAnimationFrame(tick);
+    else el.textContent = target.toLocaleString() + suffix;
+  }
+  requestAnimationFrame(tick);
+}
+
+// ===== INIT OVERVIEW =====
+function initOverview() {
+  setTimeout(() => {
+    animateNumber(document.getElementById('bigNumber'), CR7.totals.goals);
+    animateNumber(document.getElementById('totalAssists'), CR7.totals.assists);
+    animateNumber(document.getElementById('totalApps'), CR7.totals.apps);
+    animateNumber(document.getElementById('totalGA'), CR7.totals.goals + CR7.totals.assists);
+    document.getElementById('gPerApp').textContent = (CR7.totals.goals / CR7.totals.apps).toFixed(2);
+
+    // Progress bar
+    const pct = (CR7.totals.goals / 1000) * 100;
+    document.getElementById('progBar').style.width = pct + '%';
+    document.getElementById('progPct').textContent = pct.toFixed(1) + '%';
+    document.getElementById('progRem').textContent = (1000 - CR7.totals.goals);
+  }, 300);
+
+  // Moments list
+  const ml = document.getElementById('momentsList');
+  ml.innerHTML = CR7.moments.map(m => `
+    <div class="moment">
+      <div class="moment-info">
+        <div class="moment-year">${m.year}</div>
+        <div class="moment-event">${m.event}</div>
+      </div>
+      <div class="moment-goals">@ ${m.goalAt} GOALS</div>
+    </div>
+  `).join('');
+}
+
+// ===== CLUBS PANEL =====
+function initClubs() {
+  const grid = document.getElementById('clubsGrid');
+  grid.innerHTML = CR7.clubs.map(c => `
+    <div class="club">
+      <div class="club-stripe" style="background:${c.color};"></div>
+      <div class="club-name">${c.name}</div>
+      ${c.sub ? `<div class="club-sub">${c.sub}</div>` : ''}
+      <div class="club-period">${c.period}</div>
+      <div class="club-stats">
+        <div class="club-stat">
+          <div class="club-stat-num">${c.goals}</div>
+          <div class="club-stat-lab">GOALS</div>
+        </div>
+        <div class="club-stat">
+          <div class="club-stat-num assist">${c.assists}</div>
+          <div class="club-stat-lab">ASSISTS</div>
+        </div>
+      </div>
+      <div class="club-apps">In <strong>${c.apps}</strong> apps · ${(c.goals/c.apps).toFixed(2)} G/app</div>
+    </div>
+  `).join('');
+}
+
+// (old Chart.js-based functions removed; replaced by inline SVG implementations above)
+
+// ===== COMPETITIONS PANEL =====
+let activeCat = 'all';
+let expandedComp = null;
+
+function renderCompList() {
+  const list = document.getElementById('compList');
+  const filtered = activeCat === 'all'
+    ? CR7.competitions
+    : CR7.competitions.filter(c => c.category === activeCat);
+  const sorted = [...filtered].sort((a,b) => b.goals - a.goals);
+  const maxG = Math.max(...sorted.map(c => c.goals));
+
+  list.innerHTML = sorted.map((c, i) => {
+    const pct = (c.goals / maxG * 100).toFixed(1);
+    const hasDrill = SEASON_DATA[c.name];
+    return `
+      <div class="comp-row" data-name="${c.name}" data-color="${c.color}">
+        <div class="comp-bar-bg" style="background:${c.color}; opacity:0.1; width:${pct}%; position:absolute; left:0; top:0; bottom:0; z-index:0;"></div>
+        <div class="comp-rank">#${(i+1).toString().padStart(2,'0')}</div>
+        <div class="comp-info">
+          <div class="comp-name">${c.name}${hasDrill ? '<span class="chevron">▾</span>' : ''}</div>
+          ${c.note ? `<div class="comp-note">★ ${c.note}</div>` : ''}
+        </div>
+        <div class="comp-apps">${c.apps} apps</div>
+        <div class="comp-ratio">${(c.goals/c.apps).toFixed(2)} G/A</div>
+        <div class="comp-goals" style="color:${c.color === '#fff200' || c.color === '#febe10' ? '#fff' : c.color === '#000000' ? '#fff' : c.color}">${c.goals}</div>
+      </div>
+      ${hasDrill ? `<div class="comp-drill" data-drill="${c.name}"></div>` : ''}
+    `;
+  }).join('');
+
+  // Wire up click handlers
+  document.querySelectorAll('.comp-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const name = row.dataset.name;
+      const color = row.dataset.color;
+      const drill = document.querySelector(`.comp-drill[data-drill="${name}"]`);
+      if (!drill) return;
+      if (row.classList.contains('expanded')) {
+        row.classList.remove('expanded');
+        drill.classList.remove('open');
+      } else {
+        // Close any other expanded
+        document.querySelectorAll('.comp-row.expanded').forEach(r => {
+          r.classList.remove('expanded');
+          const d = document.querySelector(`.comp-drill[data-drill="${r.dataset.name}"]`);
+          if (d) d.classList.remove('open');
+        });
+        // Open this one
+        row.classList.add('expanded');
+        renderDrilldown(drill, name, color);
+        drill.classList.add('open');
+      }
+    });
+  });
+}
+
+function renderDrilldown(container, name, color) {
+  const seasonData = SEASON_DATA[name];
+  const comp = CR7.competitions.find(c => c.name === name);
+  if (!seasonData || !comp) {
+    container.innerHTML = '<div class="comp-drill-inner"><div class="drill-no-data">DETAILED DATA NOT AVAILABLE</div></div>';
+    return;
+  }
+
+  // Best season
+  const best = seasonData.data.reduce((m, d) => d.g > m.g ? d : m, {g:-1});
+
+  // SVG chart
+  const W = 700, H = 240;
+  const padL = 30, padR = 15, padT = 28, padB = 36;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const data = seasonData.data;
+  const maxG = Math.max(...data.map(d => d.g), 1);
+  const niceMax = Math.ceil(maxG / 5) * 5 || 5;
+  const n = data.length;
+  const barW = (innerW / n) * 0.65;
+  const xAt = i => padL + (i + 0.5) * (innerW / n);
+  const yAt = v => padT + innerH - (v / niceMax) * innerH;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">`;
+
+  // Y gridlines
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + innerH * i / 4;
+    const v = Math.round(niceMax * (4 - i) / 4);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="rgba(245,245,240,0.05)"/>`;
+    svg += `<text x="${padL - 6}" y="${y + 3}" text-anchor="end" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="9">${v}</text>`;
+  }
+
+  // Bars
+  data.forEach((d, i) => {
+    const cx = xAt(i);
+    const x = cx - barW / 2;
+    const y = yAt(d.g);
+    const h = innerH - (yAt(d.g) - padT);
+    const isBest = d.g === best.g && d.g > 0;
+    const opacity = d.g === 0 ? 0.25 : 1;
+    svg += `<rect x="${x}" y="${padT + innerH}" width="${barW}" height="0" fill="${color}" opacity="${opacity}">
+      <animate attributeName="y" from="${padT + innerH}" to="${y}" dur="0.7s" fill="freeze" begin="${i*0.04}s"/>
+      <animate attributeName="height" from="0" to="${h}" dur="0.7s" fill="freeze" begin="${i*0.04}s"/>
+      <title>${d.label}: ${d.g} goals</title>
+    </rect>`;
+    if (isBest) {
+      // Star above best
+      svg += `<text x="${cx}" y="${y - 14}" text-anchor="middle" fill="#e8c468" font-size="12" opacity="0">★
+        <animate attributeName="opacity" from="0" to="1" dur="0.4s" fill="freeze" begin="${0.6 + i*0.04}s"/>
+      </text>`;
+    }
+    if (d.g > 0) {
+      svg += `<text x="${cx}" y="${y - 4}" text-anchor="middle" fill="${isBest ? '#e8c468' : '#f5f5f0'}" font-family="Archivo Black, sans-serif" font-size="${isBest ? 12 : 10}" opacity="0">${d.g}
+        <animate attributeName="opacity" from="0" to="1" dur="0.4s" fill="freeze" begin="${0.5 + i*0.04}s"/>
+      </text>`;
+    }
+    // X label
+    svg += `<text x="${cx}" y="${H - 18}" text-anchor="middle" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="9" transform="rotate(-30, ${cx}, ${H - 18})">${d.label}</text>`;
+  });
+
+  // Average line
+  const total = data.reduce((s, d) => s + d.g, 0);
+  const avg = total / data.length;
+  const yAvg = yAt(avg);
+  svg += `<line x1="${padL}" y1="${yAvg}" x2="${W - padR}" y2="${yAvg}" stroke="${color}" stroke-width="1" stroke-dasharray="3 3" opacity="0">
+    <animate attributeName="opacity" from="0" to="0.6" dur="0.5s" fill="freeze" begin="1.0s"/>
+  </line>`;
+  svg += `<text x="${W - padR}" y="${yAvg - 4}" text-anchor="end" fill="${color}" font-family="JetBrains Mono, monospace" font-size="9" opacity="0">avg ${avg.toFixed(1)}
+    <animate attributeName="opacity" from="0" to="0.7" dur="0.5s" fill="freeze" begin="1.0s"/>
+  </text>`;
+
+  svg += '</svg>';
+
+  // Meta panel content
+  const minLabel = data.find(d => d.g === best.g).label;
+  container.innerHTML = `
+    <div class="comp-drill-inner" style="--comp-c:${color}">
+      <div class="drill-chart-wrap">${svg}</div>
+      <div class="drill-meta">
+        <div class="drill-best">
+          <div class="drill-best-lab">ベストシーズン</div>
+          <div class="drill-best-val">${best.g} <span style="font-size:14px;color:#8a8a85">G</span></div>
+          <div class="drill-best-when">${minLabel}</div>
+        </div>
+        <div class="drill-meta-item" style="--comp-c:${color}">
+          <div class="drill-meta-label">通算ゴール</div>
+          <div class="drill-meta-val">${comp.goals}</div>
+        </div>
+        <div class="drill-meta-item">
+          <div class="drill-meta-label">出場</div>
+          <div class="drill-meta-val">${comp.apps} apps</div>
+        </div>
+        <div class="drill-meta-item">
+          <div class="drill-meta-label">平均 / シーズン</div>
+          <div class="drill-meta-val">${avg.toFixed(1)} G</div>
+        </div>
+        ${seasonData.note ? `<div class="drill-meta-item">
+          <div class="drill-meta-label">NOTE</div>
+          <div style="font-family:Inter,sans-serif; font-size:11px; color:var(--ink-dim); line-height:1.5; margin-top:4px;">${seasonData.note}</div>
+        </div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+document.querySelectorAll('.comp-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.comp-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    activeCat = chip.dataset.cat;
+    renderCompList();
+  });
+});
+
+// ===== TRENDS PANEL =====
+// (old Chart.js trend chart removed; replaced by inline SVG implementation above)
+
+document.querySelectorAll('.tog').forEach(tog => {
+  tog.addEventListener('click', () => {
+    const s = tog.dataset.series;
+    activeSeries[s] = !activeSeries[s];
+    tog.classList.toggle('active');
+    renderTrendChart();
+  });
+});
+
+// Peak years
+function initPeakYears() {
+  const top5 = [...CR7.yearly].sort((a,b) => b.goals - a.goals).slice(0, 5);
+  document.getElementById('peakYears').innerHTML = top5.map((y, i) => `
+    <div class="record">
+      <div class="record-val">${y.goals}</div>
+      <div class="record-label">${y.year} · Age ${y.age}<br>${i === 0 ? '★ キャリアベスト' : `#${i+1}`}</div>
+    </div>
+  `).join('');
+}
+
+// ===== CLOUDFLARE WORKER AUTO-UPDATE =====
+// Set this to your deployed Worker URL after following SETUP.md
+// Example: 'https://cr7-proxy.your-account.workers.dev'
+const WORKER_URL = localStorage.getItem('cr7_worker_url') || '';
+
+async function refreshFromWikipedia() {
+  const btn = document.getElementById('refreshBtn');
+  const originalText = btn.innerHTML;
+
+  // No worker configured yet → show config prompt
+  if (!WORKER_URL) {
+    const url = prompt(
+      '🔧 Cloudflare Worker URL を入力してください\n\n' +
+      '例: https://cr7-proxy.YOUR-ACCOUNT.workers.dev\n\n' +
+      '(セットアップ方法は SETUP.md を参照)\n' +
+      '※ 設定はブラウザに保存されます',
+      ''
+    );
+    if (url && url.startsWith('http')) {
+      localStorage.setItem('cr7_worker_url', url.trim());
+      location.reload();
+    }
+    return;
+  }
+
+  btn.innerHTML = '<span class="spinner"></span>取得中...';
+  btn.disabled = true;
+
+  try {
+    const resp = await fetch(WORKER_URL + '/current', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+
+    if (!resp.ok) {
+      const errBody = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${errBody.slice(0,200)}`);
+    }
+
+    const data = await resp.json();
+    const cur = data.current_season || {};
+
+    // Update the displayed current season stats (visualize the latest fetched values)
+    const liveGoals = cur.goals || 0;
+    const liveAssists = cur.assists || 0;
+    const liveApps = cur.apps || 0;
+
+    // Optional: add fetched season to a "live" panel
+    showLiveCurrentSeason(cur, data);
+
+    // Update last-updated time
+    const updateTime = new Date().toLocaleString('ja-JP');
+    document.getElementById('updatedAt').textContent = '🔄 LIVE ' + updateTime.split(' ')[1];
+    const rl = data.rate_limit || {};
+    const rlNote = rl.daily_remaining ? ` · API残量 ${rl.daily_remaining}/${rl.daily_limit}` : '';
+    document.getElementById('updateNote').textContent =
+      `LIVE: ${updateTime}${rlNote} ${cur.cached ? '(キャッシュ)' : '(新規取得)'}`;
+
+    btn.innerHTML = '✓ 取得完了';
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }, 2000);
+
+  } catch (err) {
+    btn.innerHTML = '✗ エラー';
+    btn.disabled = false;
+    alert(
+      '❌ 取得失敗\n\n' + err.message + '\n\n' +
+      '考えられる原因:\n' +
+      '• Worker URLが間違っている\n' +
+      '• API-Football のAPIキーが未設定\n' +
+      '• 1日100リクエストの上限超過\n\n' +
+      'Worker URLを変更するには、リセットしてください。'
+    );
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+    }, 2500);
+  }
+}
+
+// ===== Show live current season panel =====
+function showLiveCurrentSeason(cur, full) {
+  // Check if panel exists, else create
+  let panel = document.getElementById('livePanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'livePanel';
+    panel.style.cssText = `
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, rgba(74,222,128,0.08), transparent);
+      border: 1px solid rgba(74,222,128,0.3);
+      padding: 20px 22px;
+      margin-top: 16px;
+      border-radius: 4px;
+    `;
+    document.querySelector('.overview-right').appendChild(panel);
+  }
+
+  const compList = (cur.by_competition || [])
+    .filter(c => c.apps > 0)
+    .map(c => `
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;">
+        <span style="font-family:Oswald,sans-serif;color:#f5f5f0;">${c.league}</span>
+        <span style="font-family:JetBrains Mono,monospace;color:#8a8a85;">
+          <span style="color:#4ade80;font-weight:700;">${c.goals}G</span> · ${c.assists}A · ${c.apps}試合
+        </span>
+      </div>
+    `).join('');
+
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <div style="width:8px;height:8px;background:#4ade80;border-radius:50%;animation:pulse 2s infinite;"></div>
+      <div style="font-family:JetBrains Mono,monospace;font-size:10px;color:#4ade80;letter-spacing:2px;text-transform:uppercase;">LIVE · 2025/26シーズン (API-Football)</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px;">
+      <div>
+        <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:#8a8a85;letter-spacing:1.5px;">GOALS</div>
+        <div style="font-family:Archivo Black,sans-serif;font-size:28px;color:#4ade80;letter-spacing:-1px;">${cur.goals}</div>
+      </div>
+      <div>
+        <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:#8a8a85;letter-spacing:1.5px;">ASSISTS</div>
+        <div style="font-family:Archivo Black,sans-serif;font-size:28px;color:#f5f5f0;letter-spacing:-1px;">${cur.assists}</div>
+      </div>
+      <div>
+        <div style="font-family:JetBrains Mono,monospace;font-size:9px;color:#8a8a85;letter-spacing:1.5px;">APPS</div>
+        <div style="font-family:Archivo Black,sans-serif;font-size:28px;color:#f5f5f0;letter-spacing:-1px;">${cur.apps}</div>
+      </div>
+    </div>
+    ${compList ? `<div style="margin-top:12px;">${compList}</div>` : ''}
+    <div style="margin-top:12px;font-family:JetBrains Mono,monospace;font-size:9px;color:#5a5a55;letter-spacing:1px;">
+      DATA: API-FOOTBALL · 経由: CLOUDFLARE WORKERS
+    </div>
+  `;
+}
+
+// Reset worker URL (developer helper)
+window.resetWorkerUrl = function() {
+  localStorage.removeItem('cr7_worker_url');
+  alert('Worker URL をリセットしました。リロードします。');
+  location.reload();
+};
+
+// ===== COMPARE PANEL =====
+const compareState = {
+  xmode: 'age',     // 'age' or 'year'
+  metric: 'goals',  // 'goals' / 'assists' / 'ga'
+  stack: 'cum',     // 'cum' or 'annual'
+  activePlayers: new Set(PLAYER_ORDER)  // all active by default
+};
+
+function getYearlyForCompare(pkey) {
+  // Returns array of { year, age, goals, assists, ga }
+  const p = PLAYERS[pkey];
+  const birth = BIRTH_YEAR[pkey];
+  // Use career total assist ratio to estimate assists per year
+  const assistRatio = p.totals.assists / p.totals.goals;
+  return p.yearly.map(([year, goals]) => {
+    const assists = Math.round(goals * assistRatio);
+    return { year, age: year - birth, goals, assists, ga: goals + assists };
+  });
+}
+
+function renderCompareToggles() {
+  const wrap = document.getElementById('compareToggles');
+  if (!wrap) return;
+  wrap.innerHTML = PLAYER_ORDER.map(k => {
+    const p = PLAYERS[k];
+    const active = compareState.activePlayers.has(k);
+    return `<button class="ctog ${active ? 'active' : ''}" data-key="${k}">
+      <span class="ctog-dot" style="background:${p.accent};"></span>
+      <span class="ctog-flag">${p.flag}</span>
+      <span>${p.short}</span>
+    </button>`;
+  }).join('');
+  wrap.querySelectorAll('.ctog').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.key;
+      if (compareState.activePlayers.has(k)) {
+        if (compareState.activePlayers.size > 1) compareState.activePlayers.delete(k);
+      } else {
+        compareState.activePlayers.add(k);
+      }
+      renderCompareToggles();
+      renderCompareChart();
+      renderCompareRanking();
+    });
+  });
+}
+
+function renderCompareChart() {
+  const wrap = document.getElementById('compareChartWrap');
+  if (!wrap) return;
+
+  // Build per-player series
+  const series = [];
+  PLAYER_ORDER.forEach(k => {
+    if (!compareState.activePlayers.has(k)) return;
+    const p = PLAYERS[k];
+    const data = getYearlyForCompare(k);
+    let cumVal = 0;
+    const points = data.map(d => {
+      const val = d[compareState.metric];
+      cumVal += val;
+      const x = compareState.xmode === 'age' ? d.age : d.year;
+      const y = compareState.stack === 'cum' ? cumVal : val;
+      return { x, y, age: d.age, year: d.year, val, cum: cumVal };
+    });
+    series.push({ key: k, name: PLAYERS[k].short, color: p.accent, flag: p.flag, points });
+  });
+
+  if (!series.length) { wrap.innerHTML = '<div style="padding:80px;text-align:center;color:var(--ink-dim);font-family:JetBrains Mono,monospace;font-size:11px;letter-spacing:1px;">No player selected</div>'; return; }
+
+  // Compute axes range
+  const allX = series.flatMap(s => s.points.map(p => p.x));
+  const allY = series.flatMap(s => s.points.map(p => p.y));
+  let xMin = Math.min(...allX);
+  let xMax = Math.max(...allX);
+  if (compareState.xmode === 'age') {
+    xMin = Math.max(15, xMin);
+    xMax = Math.max(xMax, 42);
+  }
+  const yMax = Math.max(...allY);
+  const niceYMax = compareState.stack === 'cum'
+    ? Math.ceil(yMax / 100) * 100
+    : Math.ceil(yMax / 10) * 10;
+
+  // SVG
+  const W = 1400, H = 680;
+  const padL = 80, padR = 100, padT = 40, padB = 70;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+  const xAt = v => padL + ((v - xMin) / (xMax - xMin)) * innerW;
+  const yAt = v => padT + innerH - (v / niceYMax) * innerH;
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">`;
+
+  // Gridlines Y
+  for (let i = 0; i <= 5; i++) {
+    const y = padT + innerH * i / 5;
+    const v = Math.round(niceYMax * (5 - i) / 5);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="rgba(245,245,240,0.06)"/>`;
+    svg += `<text x="${padL - 12}" y="${y + 6}" text-anchor="end" fill="#a0a09a" font-family="JetBrains Mono, monospace" font-size="14" font-weight="500">${v}</text>`;
+  }
+  // X labels
+  const xRange = xMax - xMin;
+  const xStep = compareState.xmode === 'age'
+    ? (xRange > 25 ? 5 : 2)
+    : (xRange > 20 ? 4 : 2);
+  for (let v = Math.ceil(xMin); v <= xMax; v++) {
+    if ((v - Math.ceil(xMin)) % xStep === 0 || v === xMax) {
+      const x = xAt(v);
+      svg += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${H - padB}" stroke="rgba(245,245,240,0.04)"/>`;
+      svg += `<text x="${x}" y="${H - 32}" text-anchor="middle" fill="#a0a09a" font-family="JetBrains Mono, monospace" font-size="14" font-weight="500">${v}</text>`;
+    }
+  }
+  // X axis label
+  svg += `<text x="${W/2}" y="${H - 8}" text-anchor="middle" fill="#8a8a85" font-family="JetBrains Mono, monospace" font-size="12" letter-spacing="3" font-weight="600">${compareState.xmode === 'age' ? 'AGE' : 'YEAR'}</text>`;
+  // Y axis label
+  const yLabel = compareState.stack === 'cum' ? '累積 ' : '年間 ';
+  const mLabel = compareState.metric === 'goals' ? 'GOALS' : compareState.metric === 'assists' ? 'ASSISTS' : 'G+A';
+  svg += `<text x="${padL}" y="${padT - 16}" fill="#a0a09a" font-family="JetBrains Mono, monospace" font-size="12" letter-spacing="2" font-weight="600">↑ ${yLabel}${mLabel}</text>`;
+
+  // Plot each series
+  series.forEach((s, sIdx) => {
+    const pts = s.points;
+    if (!pts.length) return;
+    // Bar mode (annual)
+    if (compareState.stack === 'annual') {
+      const barW = Math.max(3, (innerW / (xRange + 1)) / series.length * 0.85);
+      const offset = (sIdx - (series.length - 1) / 2) * barW;
+      pts.forEach((pt, i) => {
+        if (pt.val === 0) return;
+        const x = xAt(pt.x) + offset - barW/2;
+        const y = yAt(pt.val);
+        const h = innerH - (yAt(pt.val) - padT);
+        svg += `<rect x="${x}" y="${padT + innerH}" width="${barW}" height="0" fill="${s.color}" opacity="0.9">
+          <animate attributeName="y" from="${padT + innerH}" to="${y}" dur="0.7s" fill="freeze" begin="${sIdx*0.05 + i*0.01}s"/>
+          <animate attributeName="height" from="0" to="${h}" dur="0.7s" fill="freeze" begin="${sIdx*0.05 + i*0.01}s"/>
+          <title>${s.name} ${pt.year} (age ${pt.age}): ${pt.val}</title>
+        </rect>`;
+      });
+    } else {
+      // Cumulative line - thicker for visibility
+      const pathD = pts.map((pt, i) => (i === 0 ? `M ${xAt(pt.x)} ${yAt(pt.y)}` : `L ${xAt(pt.x)} ${yAt(pt.y)}`)).join(' ');
+      const totalLen = pts.length * 100;
+      // Subtle glow underneath
+      svg += `<path d="${pathD}" stroke="${s.color}" stroke-width="6" fill="none" stroke-linejoin="round" stroke-linecap="round" opacity="0.15" stroke-dasharray="${totalLen}" stroke-dashoffset="${totalLen}">
+        <animate attributeName="stroke-dashoffset" from="${totalLen}" to="0" dur="1.5s" fill="freeze" begin="${sIdx*0.1}s"/>
+      </path>`;
+      // Main line
+      svg += `<path d="${pathD}" stroke="${s.color}" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="${totalLen}" stroke-dashoffset="${totalLen}">
+        <animate attributeName="stroke-dashoffset" from="${totalLen}" to="0" dur="1.5s" fill="freeze" begin="${sIdx*0.1}s"/>
+      </path>`;
+      // End-point dot + label
+      const last = pts[pts.length - 1];
+      svg += `<circle cx="${xAt(last.x)}" cy="${yAt(last.y)}" r="0" fill="${s.color}" stroke="#0a0a0a" stroke-width="2">
+        <animate attributeName="r" from="0" to="8" dur="0.4s" fill="freeze" begin="${sIdx*0.1 + 1.4}s"/>
+      </circle>`;
+      svg += `<text x="${xAt(last.x) + 14}" y="${yAt(last.y) + 6}" fill="${s.color}" font-family="Archivo Black, sans-serif" font-size="18" opacity="0">${s.flag} ${last.y}
+        <animate attributeName="opacity" from="0" to="1" dur="0.4s" fill="freeze" begin="${sIdx*0.1 + 1.5}s"/>
+      </text>`;
+      // Per-point dots for tooltip
+      pts.forEach((pt) => {
+        svg += `<circle cx="${xAt(pt.x)}" cy="${yAt(pt.y)}" r="4" fill="${s.color}" opacity="0">
+          <animate attributeName="opacity" from="0" to="0.7" dur="0.2s" fill="freeze" begin="${sIdx*0.1 + 1.6}s"/>
+          <title>${s.name} ${compareState.xmode === 'age' ? 'age ' + pt.age : pt.year}: ${pt.y} ${compareState.stack === 'cum' ? '(cum)' : ''}</title>
+        </circle>`;
+      });
+    }
+  });
+
+  svg += '</svg>';
+  wrap.innerHTML = svg;
+}
+
+function renderCompareRanking() {
+  const wrap = document.getElementById('compareRanking');
+  if (!wrap) return;
+  const metric = compareState.metric;
+
+  const ranked = PLAYER_ORDER
+    .filter(k => compareState.activePlayers.has(k))
+    .map(k => {
+      const p = PLAYERS[k];
+      const val = metric === 'goals' ? p.totals.goals :
+                  metric === 'assists' ? p.totals.assists :
+                  p.totals.goals + p.totals.assists;
+      return { k, p, val };
+    })
+    .sort((a, b) => b.val - a.val);
+
+  const maxVal = ranked.length ? ranked[0].val : 1;
+  wrap.innerHTML = ranked.map((r, i) => {
+    const pct = (r.val / maxVal * 100).toFixed(1);
+    return `
+      <div class="comp-row" data-name="${r.p.short}" style="cursor:default;">
+        <div class="comp-bar-bg" style="background:${r.p.accent}; opacity:0.12; width:${pct}%; position:absolute; left:0; top:0; bottom:0; z-index:0;"></div>
+        <div class="comp-rank">#${(i+1).toString().padStart(2,'0')}</div>
+        <div class="comp-info">
+          <div class="comp-name">${r.p.flag} ${r.p.short}</div>
+          <div class="comp-note" style="color:${r.p.accent};">${r.p.club} · ${typeof r.p.age === 'number' ? 'AGE ' + r.p.age : r.p.age}</div>
+        </div>
+        <div class="comp-apps">${r.p.totals.apps} apps</div>
+        <div class="comp-ratio">${(r.p.totals.goals / r.p.totals.apps).toFixed(2)} G/A</div>
+        <div class="comp-goals" style="color:${r.p.accent};">${r.val}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Update subtitle
+  const sub = document.getElementById('compareRankingSub');
+  if (sub) {
+    sub.textContent = metric === 'goals' ? 'CUMULATIVE GOALS' :
+                      metric === 'assists' ? 'CUMULATIVE ASSISTS' :
+                      'GOALS + ASSISTS';
+  }
+}
+
+function initCompare() {
+  // Wire up control buttons
+  document.querySelectorAll('.seg[data-xmode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.seg[data-xmode]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      compareState.xmode = btn.dataset.xmode;
+      renderCompareChart();
+    });
+  });
+  document.querySelectorAll('.seg[data-metric]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.seg[data-metric]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      compareState.metric = btn.dataset.metric;
+      renderCompareChart();
+      renderCompareRanking();
+    });
+  });
+  document.querySelectorAll('.seg[data-stack]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.seg[data-stack]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      compareState.stack = btn.dataset.stack;
+      renderCompareChart();
+    });
+  });
+
+  renderCompareToggles();
+  renderCompareChart();
+  renderCompareRanking();
+}
+
+// ===== INIT =====
+renderPlayerSwitcher();
+initOverview();
+initClubs();
+renderCompList();
+initPeakYears();
+renderRecordsPanel();
+</script>
+
+</body>
+</html>　これも追加して
