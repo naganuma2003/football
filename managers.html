@@ -1,0 +1,2131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サッカー名将の師弟関係</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;700&display=swap');
+  :root {
+    --bg: #0a0c10;
+    --border: #1e2330;
+    --accent-gold: #c9a84c;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  header {
+    padding: 28px 40px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.6rem;
+    letter-spacing: 0.08em;
+    color: var(--accent-gold);
+    line-height: 1;
+  }
+  header p { font-size: 0.75rem; color: var(--muted); }
+  .legend {
+    display: flex;
+    gap: 10px 14px;
+    padding: 6px 14px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    align-items: center;
+    max-height: 200px;
+    overflow: hidden;
+    transition: max-height .25s, padding .25s;
+  }
+  .legend.collapsed {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+  .legend-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 14px;
+    background: #0d1018;
+    border-bottom: 1px solid var(--border);
+    font-size: .65rem;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    letter-spacing: .03em;
+  }
+  .legend-toggle::after {
+    content: '▼';
+    font-size: .55rem;
+    transition: transform .2s;
+  }
+  .legend-toggle.collapsed::after { transform: rotate(-90deg); }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.62rem; color: var(--muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .canvas-wrap {
+    width: 100%;
+    height: calc(100vh - 120px);
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .canvas-wrap:active { cursor: grabbing; }
+  svg { display: block; transform-origin: 0 0; }
+  .node-group { cursor: default; }
+  .node-card { transition: filter 0.18s; }
+  .node-group:hover .node-card { filter: brightness(1.25) drop-shadow(0 0 8px rgba(200,168,76,0.3)); }
+
+  /* Zoom controls */
+  .zoom-controls {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 100;
+  }
+  .zoom-btn {
+    width: 40px; height: 40px;
+    background: #1a1e2a;
+    border: 1px solid #2e3446;
+    border-radius: 8px;
+    color: #c9a84c;
+    font-size: 1.3rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .zoom-btn:hover { background: #252b3b; }
+  .zoom-btn:active { background: #2e3446; }
+  .zoom-hint {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.68rem;
+    color: #4b5563;
+    pointer-events: none;
+    letter-spacing: 0.04em;
+  }
+  .section-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    fill: var(--muted);
+  }
+  .era-line { stroke: #1e2330; stroke-width: 1; stroke-dasharray: 4 4; }
+  .edge { fill: none; stroke-width: 1.6; }
+  .edge-label { font-size: 8.5px; fill: #4b5563; text-anchor: middle; font-family: 'Noto Sans JP', sans-serif; }
+
+  /* ── Modal ── */
+  #modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  #modal-overlay.open { display: flex; }
+  #modal {
+    background: #111520;
+    border: 1px solid #2a3040;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 88vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.8);
+    position: relative;
+    animation: modalIn .18s ease;
+  }
+  @keyframes modalIn {
+    from { opacity:0; transform:scale(.94) translateY(12px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+  }
+  #modal-close {
+    position: sticky; top: 0; float: right;
+    margin: 12px 14px 0 0;
+    background: #1e2330; border: none;
+    color: #9ca3af; font-size: 1.2rem;
+    width: 32px; height: 32px; border-radius: 50%;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+  }
+  #modal-close:hover { background:#2e3446; color:#fff; }
+  #modal-header {
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid #1e2330;
+  }
+  #modal-header .m-nation { font-size: 2rem; margin-right: 10px; }
+  #modal-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.7rem; letter-spacing: .06em;
+    color: var(--accent-gold); margin: 0; display: inline;
+  }
+  #modal-header .m-en { font-size: .78rem; color: #6b7280; margin-top: 2px; }
+  #modal-header .m-style { font-size: .76rem; color: #9ca3af; margin-top: 6px; line-height: 1.5; }
+  #modal-body { padding: 14px 18px 20px; }
+  .m-club-block { margin-bottom: 18px; }
+  .m-club-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: .95rem; letter-spacing: .08em;
+    padding: 4px 10px; border-radius: 6px;
+    margin-bottom: 8px; display: inline-block;
+  }
+  .m-season-table { width: 100%; border-collapse: collapse; }
+  .m-season-table th {
+    font-size: .65rem; color: #6b7280; text-align: left;
+    padding: 2px 6px; border-bottom: 1px solid #1e2330;
+    font-weight: 400; letter-spacing: .05em;
+  }
+  .m-season-table td {
+    font-size: .72rem; color: #d1d5db;
+    padding: 4px 6px; border-bottom: 1px solid #151a24;
+    vertical-align: top;
+  }
+  .m-season-table tr:last-child td { border-bottom: none; }
+  .m-season-table .rank { color: #fff; font-weight: 700; }
+  .m-season-table .rank.gold { color: #f59e0b; }
+  .m-season-table .rank.silver { color: #94a3b8; }
+  .m-season-table .cl { color: #a78bfa; }
+  .m-season-table .trophy { color: #f59e0b; }
+  .m-no-data { color: #4b5563; font-size: .72rem; font-style: italic; padding: 4px 6px; }
+
+  /* ── Tab navigation ── */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: #0d1018;
+    padding: 0 16px;
+  }
+  .tab-btn {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: .07em;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 10px 18px 9px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab-btn.active { color: var(--accent-gold); border-bottom-color: var(--accent-gold); }
+  .tab-btn:hover { color: #e8eaf0; }
+
+  /* ── Stats page ── */
+  #page-stats {
+    display: none;
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+    padding: 10px 12px 40px;
+    -webkit-overflow-scrolling: touch;
+  }
+  #page-stats.active { display: block; }
+  #page-tree { display: block; }
+  #page-tree.hidden { display: none; }
+
+  /* ── Accordion cards ── */
+  .ac-card {
+    background: #111520;
+    border: 1px solid #1e2330;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: border-color .2s;
+  }
+  .ac-card.open { border-color: var(--ac-c, #c9a84c); }
+  .ac-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+  .ac-head::after {
+    content: '▶';
+    font-size: .65rem;
+    color: #4b5563;
+    margin-left: auto;
+    flex-shrink: 0;
+    transition: transform .22s, color .22s;
+  }
+  .ac-card.open .ac-head::after { transform: rotate(90deg); color: var(--ac-c, #c9a84c); }
+  .ac-flag { font-size: 1.3rem; flex-shrink: 0; }
+  .ac-info { flex: 1; min-width: 0; }
+  .ac-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .ac-status {
+    font-size: .6rem;
+    padding: 1px 7px;
+    border-radius: 10px;
+    border: 1px solid;
+    font-weight: 700;
+    letter-spacing: .02em;
+    white-space: nowrap;
+  }
+  .ac-name { font-weight: 700; font-size: .92rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ac-en   { font-size: .68rem; color: #6b7280; margin-top: 1px; }
+  .ac-stats-row {
+    display: flex;
+    gap: 5px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+  .ac-stat-badge {
+    font-size: .6rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    letter-spacing: .03em;
+    white-space: nowrap;
+  }
+  .ac-badge {
+    font-size: .65rem;
+    background: #1a1e2c;
+    border: 1px solid #2a3040;
+    border-radius: 20px;
+    padding: 2px 8px;
+    color: #9ca3af;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .ac-body {
+    display: none;
+    padding: 0 14px 14px;
+    border-top: 1px solid #1a1f2e;
+  }
+  .ac-card.open .ac-body { display: block; }
+  .ac-style {
+    font-size: .71rem;
+    color: #9ca3af;
+    line-height: 1.55;
+    padding: 9px 0 8px;
+    border-bottom: 1px solid #1a1f2e;
+    margin-bottom: 10px;
+  }
+  .ac-club-block { margin-bottom: 14px; }
+  .ac-club-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: .85rem;
+    letter-spacing: .05em;
+    padding: 3px 9px;
+    border-radius: 5px;
+    display: inline-block;
+    margin-bottom: 6px;
+  }
+  .ac-table { width: 100%; border-collapse: collapse; font-size: .7rem; }
+  .ac-table thead th {
+    color: #4b5563; font-weight: 400; text-align: left;
+    padding: 2px 5px 5px; border-bottom: 1px solid #1e2330;
+    font-size: .62rem; letter-spacing: .04em;
+  }
+  .ac-table tbody tr { border-bottom: 1px solid #13172050; }
+  .ac-table tbody tr:last-child { border-bottom: none; }
+  .ac-table tbody td { padding: 5px 5px; vertical-align: top; color: #d1d5db; }
+  .td-s  { color: #6b7280; white-space: nowrap; font-size:.68rem; }
+  .td-p  { font-weight: 700; white-space: nowrap; }
+  .td-p1 { color: #f59e0b; }
+  .td-p2 { color: #94a3b8; }
+  .td-p3 { color: #cd7c2a; }
+  .td-ppg { color: #a78bfa; font-weight: 700; font-size: .68rem; }
+  .td-cl { color: #a78bfa; }
+  .td-cl.w {
+    color: #fff;
+    background: #aa0000;
+    font-weight: 900;
+    border-radius: 3px;
+    padding: 1px 5px;
+    text-shadow: 0 0 6px #ff000088;
+    white-space: nowrap;
+  }
+  .td-note { color: #9ca3af; font-size:.68rem; }
+
+  /* Sort bar */
+  .sort-bar {
+    position: sticky;
+    top: 0;
+    background: #0d1018;
+    border-bottom: 1px solid #1e2330;
+    padding: 8px 10px;
+    margin: -10px -12px 8px;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    align-items: center;
+    z-index: 5;
+  }
+  .sort-label {
+    font-size: .65rem;
+    color: #6b7280;
+    margin-right: 2px;
+    letter-spacing: .03em;
+  }
+  .sort-btn {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: .65rem;
+    background: #1a1e2a;
+    border: 1px solid #2a3040;
+    color: #9ca3af;
+    padding: 4px 9px;
+    border-radius: 14px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .15s, color .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .sort-btn:active { background: #252b3b; }
+  .sort-btn.cl-sort {
+    background: #cc000022;
+    border-color: #cc000088;
+    color: #ff6b6b;
+  }
+  .sort-btn.cl-sort.active {
+    background: #cc000044;
+    border-color: #ff4444;
+    color: #ff4444;
+    box-shadow: 0 0 8px #ff000055;
+  }
+  .sort-btn.active {
+    background: #c9a84c22;
+    border-color: #c9a84c;
+    color: #c9a84c;
+    font-weight: 700;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>FOOTBALL MANAGER TREE</h1>
+  <p>主要監督の師弟・影響関係図</p>
+</header>
+<nav class="tabs">
+  <button class="tab-btn active" id="tab-tree" onclick="switchTab('tree')">🌐 関係図</button>
+  <button class="tab-btn" id="tab-stats" onclick="switchTab('stats')">📊 成績一覧</button>
+</nav>
+
+<div id="page-tree">
+<div class="legend-toggle" id="legend-toggle" onclick="toggleLegend()">凡例を表示</div>
+<div class="legend collapsed" id="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div><span>ミケルス系（緑）</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div><span>サッキ系（青）</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div><span>ペップ本人（アンバー）</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fbbf24"></div><span>ペップ門下生（薄アンバー）</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fb923c"></div><span>ペップ系選手→監督（オレンジ）</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div><span>クロップ系（赤）</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div><span>ファン・ハール系（紫）</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div><span>独立系（グレー）</span></div>
+  <div class="legend-item" style="margin-left:8px"><span style="color:#c9a84c">──▶</span><span style="margin-left:4px">コーチ師弟</span></div>
+  <div class="legend-item"><span style="color:#3498db">──▶</span><span style="margin-left:4px">選手として影響</span></div>
+  <div class="legend-item"><span style="color:#9b59b6">──▶</span><span style="margin-left:4px">思想的影響</span></div>
+</div>
+<div class="canvas-wrap" id="canvas">
+  <svg id="tree"></svg>
+</div>
+<div class="zoom-controls">
+  <button class="zoom-btn" id="zoomIn" title="拡大">＋</button>
+  <button class="zoom-btn" id="zoomReset" title="リセット" style="font-size:0.85rem">reset</button>
+  <button class="zoom-btn" id="zoomOut" title="縮小">－</button>
+</div>
+<div class="zoom-hint">🖱 ホイール／ドラッグ で移動　📱 2本指ピンチで拡大縮小</div>
+</div><!-- /page-tree -->
+
+<div id="page-stats"><!-- populated by JS --></div>
+
+<!-- Modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <button id="modal-close">✕</button>
+    <div id="modal-header"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DATA
+// coaching: [{team, years}]
+// managing: [{team, years}]
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const managers = {
+  // ━━ Y軸は監督キャリア開始年に対応 ━━
+  // Y = (startYear - 1960) * 18 + 60  (pixel per year ≈ 18px)
+  // ペップ(2008) を中央X=1100 に固定
+  // X配置: ペップ中心に師弟・影響ツリーを左右展開
+
+  rinus: {  // 監督開始 1965
+    name: "リヌス・ミケルス", en: "Rinus Michels", nation: "🇳🇱", born: "1928–2005",
+    style: "トータルフットボールの父。ポジション流動交換を発明",
+    color: "#2ecc71", x: 640, y: 150,
+    coaching: [],
+    managing: [
+      {team:"アヤックス", years:"1965–71, 75–76", trophies:"蘭L×4 蘭C×3", clWin:true, clNote:"CL'71"},
+      {team:"バルセロナ", years:"1971–75, 76–78", trophies:"LaLiga×1"},
+      {team:"オランダ代表", years:"1974, 84–88, 90–92", trophies:"EURO'88"},
+      {team:"アトレティコ・マドリード", years:"1982–84", trophies:""},
+    ]
+  },
+  sacchi: {  // 監督開始 1985
+    name: "アリゴ・サッキ", en: "Arrigo Sacchi", nation: "🇮🇹", born: "1946–",
+    style: "高DFライン・プレッシングの体系化。ゾーンの礎",
+    color: "#3b82f6", x: 1560, y: 150,
+    coaching: [],
+    managing: [
+      {team:"パルマ", years:"1985–87", trophies:""},
+      {team:"ACミラン", years:"1987–91", trophies:"セリエA×1", clWin:true, clNote:"CL×2"},
+      {team:"イタリア代表", years:"1991–96", trophies:"W杯準優勝'94"},
+      {team:"アトレティコ・マドリード", years:"1998–99", trophies:""},
+    ]
+  },
+  wenger: {  // 監督開始 1984
+    name: "アーセン・ベンゲル", en: "Arsène Wenger", nation: "🇫🇷", born: "1949–",
+    style: "科学的トレーニング革命・攻撃的ポゼッション。アーセナル22年",
+    color: "#64748b", x: 2060, y: 432,
+    coaching: [
+      {team:"RCストラスブール（ユース）", years:"1981–83"},
+      {team:"ASカンヌ（アシスタント）", years:"1983–84"},
+    ],
+    managing: [
+      {team:"ASナンシー", years:"1984–87", trophies:""},
+      {team:"ASモナコ", years:"1987–94", trophies:"L1×1 仏カップ×1"},
+      {team:"名古屋グランパス", years:"1995–96", trophies:"天皇杯×1"},
+      {team:"アーセナル", years:"1996–2018", trophies:"PL×3 FAC×7"},
+    ]
+  },
+  ferguson: {  // 監督開始 1974
+    name: "A・ファーガソン", en: "Sir Alex Ferguson", nation: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", born: "1941–",
+    style: "強靭な組織力と若手育成。マンU26年で38タイトル",
+    color: "#64748b", x: 2560, y: 252,
+    coaching: [],
+    managing: [
+      {team:"イーストスターリング", years:"1974", trophies:""},
+      {team:"セント・ミレン", years:"1974–78", trophies:"蘇1部×1"},
+      {team:"アバディーン", years:"1978–86", trophies:"蘇L×3 CWC"},
+      {team:"スコットランド代表（暫定）", years:"1985–86", trophies:""},
+      {team:"マンチェスターU", years:"1986–2013", trophies:"PL×13 FAC×5", clWin:true, clNote:"CL×2"},
+    ]
+  },
+  ranieri: {  // 監督開始 1988
+    name: "C・ラニエリ", en: "Claudio Ranieri", nation: "🇮🇹", born: "1951–",
+    style: "柔軟な戦術と人心掌握。レスター奇跡の5000-1",
+    color: "#64748b", x: 2760, y: 504,
+    coaching: [],
+    managing: [
+      {team:"カリャリ", years:"1988–91", trophies:"C1→A昇格"},
+      {team:"ナポリ", years:"1991–93", trophies:""},
+      {team:"フィオレンティーナ", years:"1993–97", trophies:"伊C×1"},
+      {team:"バレンシア", years:"1997–99", trophies:"Copa del Rey"},
+      {team:"チェルシー", years:"2000–04", trophies:""},
+      {team:"ユベントス", years:"2007–09", trophies:""},
+      {team:"モナコ", years:"2012–14", trophies:"L2→L1昇格"},
+      {team:"レスター・シティ", years:"2015–17", trophies:"PL×1🏆"},
+      {team:"ローマ", years:"2009–11, 2019, 24–25", trophies:""},
+    ]
+  },
+  cruyff: {  // 監督開始 1985
+    name: "ヨハン・クライフ", en: "Johan Cruyff", nation: "🇳🇱", born: "1947–2016",
+    style: "4-3-3 ポゼッション美学。バルサ・フィロソフィーの確立者",
+    color: "#22c55e", x: 640, y: 450,
+    coaching: [],
+    managing: [
+      {team:"アヤックス", years:"1985–88", trophies:"蘭C×2"},
+      {team:"バルセロナ", years:"1988–96", trophies:"LaLiga×4", clWin:true, clNote:"CL×1"},
+    ]
+  },
+  vanGaal: {  // 監督開始 1991
+    name: "L・ファン・ハール", en: "Louis van Gaal", nation: "🇳🇱", born: "1951–",
+    style: "ゾーナルプレス＋ポゼッション。多くの名将を育てた師匠",
+    color: "#16a34a", x: 920, y: 558,
+    coaching: [],
+    managing: [
+      {team:"アヤックス", years:"1991–97", trophies:"蘭L×3", clWin:true, clNote:"CL×1"},
+      {team:"バルセロナ", years:"1997–2000", trophies:"LaLiga×2"},
+      {team:"オランダ代表", years:"2000–02, 12–14", trophies:"W杯3位'14"},
+      {team:"バイエルン", years:"2009–11", trophies:"ブンデス×1"},
+      {team:"マンチェスターU", years:"2014–16", trophies:"FAC×1"},
+    ]
+  },
+  capello: {  // 監督開始 1991
+    name: "ファビオ・カペッロ", en: "Fabio Capello", nation: "🇮🇹", born: "1946–",
+    style: "規律と守備ブロック。勝利至上主義",
+    color: "#2563eb", x: 1560, y: 558,
+    coaching: [
+      {team:"ACミラン（サッキ下）", years:"1987–91"},
+    ],
+    managing: [
+      {team:"ACミラン", years:"1991–96, 97–98", trophies:"セリエA×5", clWin:true, clNote:"CL×1"},
+      {team:"レアル・マドリード", years:"1996–97, 06–07", trophies:"LaLiga×2"},
+      {team:"ローマ", years:"1999–04", trophies:"セリエA×1"},
+      {team:"ユベントス", years:"2004–06", trophies:"セリエA×2*"},
+      {team:"イングランド代表", years:"2008–12", trophies:""},
+    ]
+  },
+  ancelotti: {  // 監督開始 1995 (パルマ1996)
+    name: "C・アンチェロッティ", en: "Carlo Ancelotti", nation: "🇮🇹", born: "1959–",
+    style: "柔軟な3ラインと人心掌握。選手個性を最大化",
+    color: "#60a5fa", x: 1760, y: 630,
+    coaching: [
+      {team:"ACミラン（サッキ下）", years:"1987–91"},
+    ],
+    managing: [
+      {team:"パルマ", years:"1996–98", trophies:"伊C×1"},
+      {team:"ユベントス", years:"1999–01", trophies:"セリエA×1"},
+      {team:"ACミラン", years:"2001–09", trophies:"セリエA×1", clWin:true, clNote:"CL×2"},
+      {team:"チェルシー", years:"2009–11", trophies:"PL×1 FAC×1"},
+      {team:"PSG", years:"2011–13", trophies:"L1×1"},
+      {team:"レアル・マドリード", years:"2013–15, 21–", trophies:"LaLiga×2", clWin:true, clNote:"CL×3"},
+      {team:"バイエルン", years:"2016–17", trophies:"ブンデス×1"},
+      {team:"ナポリ", years:"2018–19", trophies:""},
+      {team:"エバートン", years:"2019–21", trophies:""},
+    ]
+  },
+  koeman: {  // 監督開始 2000
+    name: "ロナルド・クーマン", en: "Ronald Koeman", nation: "🇳🇱", born: "1963–",
+    style: "バルサ哲学継承。堅守からのビルドアップ",
+    color: "#4ade80", x: 180, y: 720,
+    coaching: [],
+    managing: [
+      {team:"アヤックス", years:"2001", trophies:""},
+      {team:"ベンフィカ", years:"2005–06", trophies:"ポルL×1"},
+      {team:"バレンシア", years:"2007–08", trophies:""},
+      {team:"AZアルクマール", years:"2009–10", trophies:""},
+      {team:"フェイエノールト", years:"2011–14", trophies:"蘭C×1"},
+      {team:"サウサンプトン", years:"2014–16", trophies:""},
+      {team:"エバートン", years:"2016–18", trophies:""},
+      {team:"オランダ代表", years:"2018–20, 23–", trophies:""},
+      {team:"バルセロナ", years:"2020–21", trophies:""},
+    ]
+  },
+  mourinho: {  // 監督開始 2001 (ポルト2002)
+    name: "J・モウリーニョ", en: "José Mourinho", nation: "🇵🇹", born: "1963–",
+    style: "低重心守備ブロック＋カウンター。心理戦の達人",
+    color: "#a3e635", x: 1340, y: 738,
+    coaching: [
+      {team:"バルサ（通訳）", years:"1996–2000"},
+      {team:"ユニオン・レイリア", years:"2000–01"},
+    ],
+    managing: [
+      {team:"ポルト", years:"2002–04", trophies:"ポルL×2", clWin:true, clNote:"CL×1"},
+      {team:"チェルシー", years:"2004–07, 13–15", trophies:"PL×3"},
+      {team:"インテル", years:"2008–10", trophies:"セリエA×2", clWin:true, clNote:"CL×1"},
+      {team:"レアル・マドリード", years:"2010–13", trophies:"LaLiga×1"},
+      {team:"マンチェスターU", years:"2016–18", trophies:"EL×1"},
+      {team:"トッテナム", years:"2019–21", trophies:""},
+      {team:"ローマ", years:"2021–24", trophies:"ECL×1"},
+      {team:"フェネルバフチェ", years:"2024–", trophies:""},
+    ]
+  },
+  pep: {  // 監督開始 2008 ★中央
+    name: "ペップ・グアルディオラ", en: "Pep Guardiola", nation: "🇪🇸", born: "1971–",
+    style: "ポジショナルプレー・偽9番・ハイプレス。現代最高峰",
+    color: "#f59e0b", x: 1100, y: 864,
+    coaching: [
+      {team:"バルセロナB", years:"2007–08"},
+    ],
+    managing: [
+      {team:"バルセロナ", years:"2008–12", trophies:"LaLiga×3", clWin:true, clNote:"CL×2"},
+      {team:"バイエルン", years:"2013–16", trophies:"ブンデス×3"},
+      {team:"マンチェスターC", years:"2016–", trophies:"PL×6 FAC×2", clWin:true, clNote:"CL×1"},
+    ]
+  },
+  klopp: {  // 監督開始 2001
+    name: "ユルゲン・クロップ", en: "Jürgen Klopp", nation: "🇩🇪", born: "1967–",
+    style: "ゲーゲンプレッシング。激烈守備から即攻への昇華",
+    color: "#ef4444", x: 1980, y: 738,
+    coaching: [],
+    managing: [
+      {team:"マインツ05", years:"2001–08", trophies:"ブンデス昇格"},
+      {team:"ドルトムント", years:"2008–15", trophies:"ブンデス×2"},
+      {team:"リバプール", years:"2015–24", trophies:"PL×1", clWin:true, clNote:"CL×1"},
+    ]
+  },
+  simone: {  // 監督開始 2006
+    name: "D・シメオネ", en: "Diego Simeone", nation: "🇦🇷", born: "1970–",
+    style: "超コンパクト守備＋カウンター。情熱の鉄壁",
+    color: "#f97316", x: 2380, y: 792,
+    coaching: [],
+    managing: [
+      {team:"エストゥディアンテス", years:"2006–08", trophies:"南米C×1"},
+      {team:"リバープレート", years:"2008–09", trophies:""},
+      {team:"アトレティコ・マドリード", years:"2011–", trophies:"LaLiga×2 EL×3"},
+    ]
+  },
+  arteta: {  // 監督開始 2019
+    name: "ミケル・アルテタ", en: "Mikel Arteta", nation: "🇪🇸", born: "1982–",
+    style: "ポジショナル＋高強度プレス。アーセナル再建",
+    color: "#fbbf24", x: 400, y: 1098,
+    coaching: [
+      {team:"マンチェスターC（ペップ下）", years:"2016–19"},
+    ],
+    managing: [
+      {team:"アーセナル", years:"2019–", trophies:"FAC×1"},
+    ]
+  },
+  domenec: {  // 監督開始 2018
+    name: "D・トレント", en: "Domènec Torrent", nation: "🇪🇸", born: "1962–",
+    style: "ペップの長年の右腕。ポゼッション哲学の伝道者",
+    color: "#fbbf24", x: 820, y: 1062,
+    coaching: [
+      {team:"バルセロナ（ペップ下）", years:"2008–12"},
+      {team:"バイエルン（ペップ下）", years:"2013–16"},
+      {team:"マンチェスターC（ペップ下）", years:"2016–18"},
+    ],
+    managing: [
+      {team:"NYシティFC", years:"2018–19", trophies:""},
+      {team:"フラメンゴ", years:"2020–21", trophies:""},
+      {team:"ガラタサライ", years:"2021–22", trophies:""},
+    ]
+  },
+  flick: {  // 監督開始 2019
+    name: "ハンジ・フリック", en: "Hansi Flick", nation: "🇩🇪", born: "1965–",
+    style: "超ハイプレス＋縦に速い攻撃。CL制覇",
+    color: "#fbbf24", x: 1040, y: 1098,
+    coaching: [
+      {team:"ドイツ代表（アシスタント）", years:"2006–14"},
+      {team:"バイエルン（ペップ下）", years:"2013–14"},
+      {team:"バイエルン（アシスタント）", years:"2019"},
+    ],
+    managing: [
+      {team:"バイエルン（暫定→正式）", years:"2019–21", trophies:"ブンデス×2", clWin:true, clNote:"CL×1"},
+      {team:"ドイツ代表", years:"2021–23", trophies:""},
+      {team:"バルセロナ", years:"2024–", trophies:""},
+    ]
+  },
+  maresca: {  // 監督開始 2021
+    name: "E・マレスカ", en: "Enzo Maresca", nation: "🇮🇹", born: "1980–",
+    style: "ペップ流ポゼッション。レスター昇格→チェルシー欧州制覇",
+    color: "#fbbf24", x: 1280, y: 1134,
+    coaching: [
+      {team:"ManCエリート育成", years:"2020–21"},
+      {team:"マンチェスターC（ペップ下）", years:"2022–23"},
+    ],
+    managing: [
+      {team:"パルマ", years:"2021", trophies:""},
+      {team:"レスター・シティ", years:"2023–24", trophies:"Championship×1"},
+      {team:"チェルシー", years:"2024–26", trophies:"ECL×1 CWC×1"},
+    ]
+  },
+  tuchel: {  // 監督開始 2009
+    name: "T・トゥヘル", en: "Thomas Tuchel", nation: "🇩🇪", born: "1973–",
+    style: "フレキシブルな戦術と緻密なセットプレー",
+    color: "#f87171", x: 2180, y: 882,
+    coaching: [],
+    managing: [
+      {team:"アウクスブルクU19", years:"2008–09", trophies:""},
+      {team:"マインツ05", years:"2009–14", trophies:""},
+      {team:"ドルトムント", years:"2015–17", trophies:"DFBポカール×1"},
+      {team:"PSG", years:"2018–20", trophies:"L1×2"},
+      {team:"チェルシー", years:"2021–22", trophies:"", clWin:true, clNote:"CL×1"},
+      {team:"バイエルン", years:"2023–24", trophies:""},
+      {team:"イングランド代表", years:"2024–25", trophies:""},
+      {team:"バイエルン", years:"2025–", trophies:""},
+    ]
+  },
+  tenHag: {  // 監督開始 2012
+    name: "E・テン・ハフ", en: "Erik ten Hag", nation: "🇳🇱", born: "1970–",
+    style: "アヤックス仕込みのポゼッション＋プレス。Mini Pep",
+    color: "#a855f7", x: 1560, y: 936,
+    coaching: [
+      {team:"バイエルンU23（ペップ在籍時）", years:"2013–15"},
+    ],
+    managing: [
+      {team:"GO Ahead Eagles", years:"2012–13", trophies:""},
+      {team:"ユトレヒト", years:"2015–17", trophies:""},
+      {team:"アヤックス", years:"2017–22", trophies:"蘭L×2 蘭C×2"},
+      {team:"マンチェスターU", years:"2022–24", trophies:"FAC×1"},
+      {team:"ベンフィカ", years:"2025–", trophies:""},
+    ]
+  },
+  nagelsmann: {  // 監督開始 2016
+    name: "ナーゲルスマン", en: "Julian Nagelsmann", nation: "🇩🇪", born: "1987–",
+    style: "戦術的多様性と若さ。4-2-2-2など革新フォーメーション",
+    color: "#e879f9", x: 2760, y: 1008,
+    coaching: [
+      {team:"ホッフェンハイムU19", years:"2013–16"},
+    ],
+    managing: [
+      {team:"ホッフェンハイム", years:"2016–19", trophies:""},
+      {team:"RBライプツィヒ", years:"2019–21", trophies:"DFBポカール×1"},
+      {team:"バイエルン", years:"2021–23", trophies:"ブンデス×1"},
+      {team:"ドイツ代表", years:"2023–", trophies:""},
+    ]
+  },
+  xabi: {  // 監督開始 2022
+    name: "シャビ・アロンソ", en: "Xabi Alonso", nation: "🇪🇸", born: "1981–",
+    style: "ポゼッション＋縦に鋭い展開。不敗優勝の革命",
+    color: "#fb923c", x: 600, y: 1170,
+    coaching: [
+      {team:"レアル・ソシエダBチーム", years:"2019–22"},
+    ],
+    managing: [
+      {team:"バイヤーレバークーゼン", years:"2022–25", trophies:"ブンデス×1"},
+      {team:"バイエルン", years:"2025–", trophies:""},
+    ]
+  },
+  xavi: {  // 監督開始 2019
+    name: "シャビ・エルナンデス", en: "Xavi Hernández", nation: "🇪🇸", born: "1980–",
+    style: "クライフ・ペップ哲学の完全継承。ティキタカ",
+    color: "#fb923c", x: 200, y: 1098,
+    coaching: [],
+    managing: [
+      {team:"アル・サッド", years:"2019–21", trophies:"カタールS×1"},
+      {team:"バルセロナ", years:"2021–24", trophies:"LaLiga×1"},
+    ]
+  },
+  kompany: {  // 監督開始 2019
+    name: "V・コンパニ", en: "Vincent Kompany", nation: "🇧🇪", born: "1986–",
+    style: "ペップ哲学を体現したCB。守備組織＋ビルドアップ",
+    color: "#fb923c", x: 1760, y: 1098,
+    coaching: [],
+    managing: [
+      {team:"アンデルレヒト（選手兼）", years:"2019–20", trophies:""},
+      {team:"バーンリー", years:"2022–23", trophies:"Championship×1"},
+      {team:"バイエルン", years:"2023–24", trophies:""},
+    ]
+  },
+  zidane: {  // 監督開始 2016
+    name: "ジネディーヌ・ジダン", en: "Zinedine Zidane", nation: "🇫🇷", born: "1972–",
+    style: "選手個性の最大化とモチベーション管理。CL3連覇の奇跡",
+    color: "#64748b", x: 1920, y: 1008,
+    coaching: [
+      {team:"レアル・マドリードB", years:"2014–16"},
+      {team:"レアル・マドリード（アンチェロッティ下）", years:"2013–14"},
+    ],
+    managing: [
+      {team:"レアル・マドリード", years:"2016–18", trophies:"LaLiga×1", clWin:true, clNote:"CL×3"},
+      {team:"レアル・マドリード", years:"2019–21", trophies:"LaLiga×1"},
+    ]
+  },
+  luisenrique: {  // 監督開始 2008
+    name: "ルイス・エンリケ", en: "Luis Enrique", nation: "🇪🇸", born: "1970–",
+    style: "クライフ哲学継承のポゼッション＋縦への速さ。バルサトレブル",
+    color: "#22c55e", x: 340, y: 828,
+    coaching: [
+      {team:"バルセロナB（ペップ後継）", years:"2008–11"},
+    ],
+    managing: [
+      {team:"AS ローマ", years:"2011–12", trophies:""},
+      {team:"セルタ・ビーゴ", years:"2013–14", trophies:""},
+      {team:"バルセロナ", years:"2014–17", trophies:"LaLiga×2 Copa×3", clWin:true, clNote:"CL×1"},
+      {team:"スペイン代表", years:"2018–22", trophies:"EURO 4強"},
+      {team:"PSG", years:"2023–", trophies:"L1×1"},
+    ]
+  }  ,
+  delbosque: {
+    name: "V・デル・ボスケ", en: "Vicente del Bosque", nation: "🇪🇸", born: "1950–",
+    style: "クライフ哲学ベースの国代表版ポゼッション。3大会連続制覇",
+    color: "#16a34a", x: 680, y: 762,
+    coaching: [{team:"レアル・マドリード（アシスタント）", years:"1994–99"}],
+    managing: [
+      {team:"レアル・マドリード", years:"1999–2003", trophies:"LaLiga×2", clWin:true, clNote:"CL×1"},
+      {team:"スペイン代表", years:"2008–16", trophies:"EURO×2 W杯×1"},
+    ]
+  },
+  martinez_r: {
+    name: "R・マルティネス", en: "Roberto Martínez", nation: "🇪🇸", born: "1973–",
+    style: "データ分析重視のモダン戦術。ベルギーW杯3位",
+    color: "#64748b", x: 2700, y: 846,
+    coaching: [],
+    managing: [
+      {team:"スウォンジー", years:"2007–09", trophies:""},
+      {team:"ウィガン", years:"2009–13", trophies:"FAC×1"},
+      {team:"エバートン", years:"2013–16", trophies:""},
+      {team:"ベルギー代表", years:"2016–22", trophies:"W杯3位'18"},
+      {team:"ポルトガル代表", years:"2023–", trophies:""},
+    ]
+  },
+  conte: {
+    name: "A・コンテ", en: "Antonio Conte", nation: "🇮🇹", born: "1969–",
+    style: "超強度プレス+堅守速攻。複数クラブで即タイトル",
+    color: "#2563eb", x: 900, y: 882,
+    coaching: [],
+    managing: [
+      {team:"ユベントス", years:"2011–14", trophies:"セリエA×3"},
+      {team:"イタリア代表", years:"2014–16", trophies:"EURO2016 4強"},
+      {team:"チェルシー", years:"2016–18", trophies:"PL×1 FAC×1"},
+      {team:"インテル", years:"2019–21", trophies:"セリエA×1"},
+      {team:"トッテナム", years:"2021–23", trophies:""},
+      {team:"ナポリ", years:"2023–24", trophies:""},
+    ]
+  },
+  allegri: {
+    name: "M・アッレグリ", en: "Massimiliano Allegri", nation: "🇮🇹", born: "1967–",
+    style: "堅守カウンター+柔軟な試合運び。ユベントス5連覇",
+    color: "#64748b", x: 3060, y: 750,
+    coaching: [],
+    managing: [
+      {team:"ミラン", years:"2010–14", trophies:"セリエA×1"},
+      {team:"ユベントス", years:"2014–19, 21–23", trophies:"セリエA×5 伊C×4"},
+    ]
+  },
+  deschamps: {
+    name: "D・デシャン", en: "Didier Deschamps", nation: "🇫🇷", born: "1968–",
+    style: "組織力と結束力。フランス代表を黄金世代に再構築",
+    color: "#64748b", x: 3100, y: 996,
+    coaching: [],
+    managing: [
+      {team:"モナコ", years:"2001–05", trophies:"L1×1"},
+      {team:"ユベントス", years:"2006–09", trophies:"セリエA×2*"},
+      {team:"マルセイユ", years:"2009–12", trophies:""},
+      {team:"フランス代表", years:"2012–", trophies:"W杯×1"},
+    ]
+  },
+  amorim: {
+    name: "R・アモリム", en: "Rúben Amorim", nation: "🇵🇹", born: "1985–",
+    style: "独自の3-4-2-1哲学。スポルティングで革命、マンUへ",
+    color: "#64748b", x: 3310, y: 1044,
+    coaching: [],
+    managing: [
+      {team:"スポルティングCP", years:"2020–24", trophies:"ポルL×2"},
+      {team:"マンチェスターU", years:"2024–", trophies:""},
+    ]
+  },
+  moriyasu: {  // 監督開始 2012
+    name: "森保 一", en: "Hajime Moriyasu", nation: "🇯🇵", born: "1968–",
+    style: "組織力・規律・選手個性の融合。日本代表を史上最強チームに",
+    color: "#64748b", x: 2880, y: 1180,
+    coaching: [
+      {team:"サンフレッチェ広島（コーチ）", years:"2007–09"},
+      {team:"アルビレックス新潟（HC）", years:"2010–11"},
+      {team:"日本代表（コーチ）", years:"2018"},
+    ],
+    managing: [
+      {team:"日本代表", years:"2018–", trophies:"W杯ベスト16'22"},
+    ]
+  }
+
+};
+
+const edges = [
+  // ミケルス系
+  ["rinus","cruyff","gold","選手→監督"],
+  ["rinus","vanGaal","gold","師弟"],
+  // サッキ系
+  ["sacchi","capello","gold","アシスタント"],
+  ["sacchi","ancelotti","gold","アシスタント"],
+  // クライフ系
+  ["cruyff","pep","gold","バルサで薫陶"],
+  ["cruyff","koeman","blue","バルサDF"],
+  ["cruyff","xavi","purple","哲学的継承"],
+  // ファン・ハール系
+  ["vanGaal","pep","blue","バルサでプレー"],
+  ["vanGaal","koeman","blue","アヤックスでプレー"],
+  ["vanGaal","mourinho","gold","バルサで通訳"],
+  ["vanGaal","tenHag","purple","アヤックス哲学"],
+  // ペップ系
+  ["pep","arteta","gold","ManCコーチ"],
+  ["pep","domenec","gold","長年の補佐"],
+  ["pep","maresca","gold","ManCコーチ"],
+  ["pep","flick","gold","バイエルンで協力"],
+  ["pep","xabi","blue","バルサ・バイエルン選手"],
+  ["pep","xavi","purple","バルサ選手→監督後継"],
+  ["pep","kompany","blue","ManCで選手"],
+  // クロップ系
+  ["klopp","tuchel","purple","ドルトムント後継"],
+  // その他
+  ["capello","mourinho","purple","戦術的影響"],
+  ["nagelsmann","tuchel","purple","同世代影響"],
+  // ファーガソン
+  ["ferguson","mourinho","purple","哲学的影響"],
+  // ベンゲル
+  ["wenger","arteta","blue","アーセナルで選手"],
+  // ジダン
+  ["ancelotti","zidane","gold","レアルでコーチ"],
+  // ルイス・エンリケ
+  ["cruyff","luisenrique","purple","バルサ哲学継承"],
+  // コンテ
+  ["sacchi","conte","purple","イタリア守備哲学"],
+  // デル・ボスケ
+  ["cruyff","delbosque","purple","バルサ哲学国代表版"],
+];
+
+const edgeColors = { gold:"#c9a84c", blue:"#3498db", purple:"#9b59b6" };
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// LAYOUT CALC
+const NW = 186;
+const NW_PEP = 242;
+const NW_SMALL = Math.round(186 * 0.7);
+const NH_BASE = 44;
+const ROW_H = 13;
+const TROPHY_H = 14;
+const ROW_GAP = 1;
+const SECTION_H = 14;
+
+const SMALL_KEYS = new Set(['deschamps','conte','allegri','delbosque','martinez_r','amorim']);
+function getNodeW(m) {
+  if (m === managers.pep) return NW_PEP;
+  const k = Object.keys(managers).find(k => managers[k] === m);
+  if (SMALL_KEYS.has(k)) return NW_SMALL;
+  return NW;
+}
+
+function nodeHeight(m) {
+  let h = NH_BASE;
+  if (m.coaching.length > 0) h += SECTION_H + m.coaching.length * (ROW_H + ROW_GAP);
+  if (m.managing.length > 0) {
+    h += SECTION_H;
+    m.managing.forEach(row => {
+      h += ROW_H + ROW_GAP;
+      if (row.trophies || row.clWin) h += TROPHY_H;
+    });
+    h += 2;
+  }
+  h += 10;
+  return h;
+}
+
+Object.values(managers).forEach(m => { m._h = nodeHeight(m); });
+
+const allX = Object.values(managers).map(m => m.x);
+const allY = Object.values(managers).map(m => m.y);
+const SVG_W = Math.max(...allX) + NW/2 + 80;
+const SVG_H = Math.max(...allY.map((y,i) => y + Object.values(managers)[i]._h)) + 80;
+
+const svg = document.getElementById("tree");
+svg.setAttribute("width", SVG_W);
+svg.setAttribute("height", SVG_H);
+svg.setAttribute("viewBox", `0 0 ${SVG_W} ${SVG_H}`);
+
+// Defs
+const defs = document.createElementNS("http://www.w3.org/2000/svg","defs");
+["gold","blue","purple"].forEach(t => {
+  const marker = document.createElementNS("http://www.w3.org/2000/svg","marker");
+  marker.setAttribute("id",`arrow-${t}`);
+  marker.setAttribute("markerWidth","7"); marker.setAttribute("markerHeight","7");
+  marker.setAttribute("refX","6"); marker.setAttribute("refY","3");
+  marker.setAttribute("orient","auto");
+  const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+  p.setAttribute("d","M0,0 L0,6 L7,3 z");
+  p.setAttribute("fill", edgeColors[t]); p.setAttribute("opacity","0.75");
+  marker.appendChild(p); defs.appendChild(marker);
+});
+// CL red glow filter (強化版)
+const filt = document.createElementNS("http://www.w3.org/2000/svg","filter");
+filt.setAttribute("id","clGlow"); filt.setAttribute("x","-60%"); filt.setAttribute("y","-60%");
+filt.setAttribute("width","220%"); filt.setAttribute("height","220%");
+// 赤成分を増幅
+const feFlood = document.createElementNS("http://www.w3.org/2000/svg","feFlood");
+feFlood.setAttribute("flood-color","#ff0000"); feFlood.setAttribute("flood-opacity","0.6");
+feFlood.setAttribute("result","red");
+const feComp = document.createElementNS("http://www.w3.org/2000/svg","feComposite");
+feComp.setAttribute("in","red"); feComp.setAttribute("in2","SourceGraphic");
+feComp.setAttribute("operator","in"); feComp.setAttribute("result","redMask");
+const feBlur = document.createElementNS("http://www.w3.org/2000/svg","feGaussianBlur");
+feBlur.setAttribute("in","redMask"); feBlur.setAttribute("stdDeviation","4"); feBlur.setAttribute("result","blur");
+const feMerge = document.createElementNS("http://www.w3.org/2000/svg","feMerge");
+const mn0 = document.createElementNS("http://www.w3.org/2000/svg","feMergeNode");
+mn0.setAttribute("in","blur");
+const mn1 = document.createElementNS("http://www.w3.org/2000/svg","feMergeNode");
+mn1.setAttribute("in","blur");
+const mn2 = document.createElementNS("http://www.w3.org/2000/svg","feMergeNode");
+mn2.setAttribute("in","SourceGraphic");
+feMerge.appendChild(mn0); feMerge.appendChild(mn1); feMerge.appendChild(mn2);
+filt.appendChild(feFlood); filt.appendChild(feComp); filt.appendChild(feBlur); filt.appendChild(feMerge);
+defs.appendChild(filt);
+svg.appendChild(defs);
+
+// BG
+const bg = document.createElementNS("http://www.w3.org/2000/svg","rect");
+bg.setAttribute("width",SVG_W); bg.setAttribute("height",SVG_H); bg.setAttribute("fill","#0a0c10");
+svg.appendChild(bg);
+
+// ── 縦軸: 年代グリッド ──
+for (let yr = 1965; yr <= 2025; yr += 5) {
+  const yp = yr * 18 - 1960 * 18 + 60;
+  const gridLine = document.createElementNS("http://www.w3.org/2000/svg","line");
+  gridLine.setAttribute("x1","30"); gridLine.setAttribute("x2",SVG_W);
+  gridLine.setAttribute("y1",yp); gridLine.setAttribute("y2",yp);
+  gridLine.setAttribute("stroke", yr % 10 === 0 ? "#1e2530" : "#161b26");
+  gridLine.setAttribute("stroke-width","1");
+  svg.appendChild(gridLine);
+  const yearLbl = document.createElementNS("http://www.w3.org/2000/svg","text");
+  yearLbl.setAttribute("x","4"); yearLbl.setAttribute("y",yp + 4);
+  yearLbl.setAttribute("font-size","9"); yearLbl.setAttribute("fill","#2e3a50");
+  yearLbl.setAttribute("font-family","'Bebas Neue', sans-serif");
+  yearLbl.setAttribute("letter-spacing","0.05em");
+  yearLbl.textContent = yr;
+  svg.appendChild(yearLbl);
+}
+
+// ペップ中心ハイライトリング
+const pepM = managers.pep;
+const pepRing = document.createElementNS("http://www.w3.org/2000/svg","ellipse");
+pepRing.setAttribute("cx", pepM.x); pepRing.setAttribute("cy", pepM.y + pepM._h/2);
+pepRing.setAttribute("rx", NW_PEP/2 + 14); pepRing.setAttribute("ry", pepM._h/2 + 14);
+pepRing.setAttribute("fill","none"); pepRing.setAttribute("stroke","#c9a84c");
+pepRing.setAttribute("stroke-width","1.5"); pepRing.setAttribute("stroke-dasharray","8 4");
+pepRing.setAttribute("opacity","0.55");
+svg.appendChild(pepRing);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EDGES  (drawn before nodes so nodes overlap them)
+edges.forEach(([from, to, type, label]) => {
+  const m = managers[from], n = managers[to];
+  if (!m || !n) return;
+  const x1 = m.x, y1 = m.y + m._h;
+  const x2 = n.x, y2 = n.y - 4;
+  const cpx = (x1+x2)/2;
+  const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+  path.setAttribute("d",`M${x1},${y1} C${cpx},${y1+40} ${cpx},${y2-40} ${x2},${y2}`);
+  path.setAttribute("class","edge");
+  path.setAttribute("stroke", edgeColors[type]);
+  path.setAttribute("opacity","0.45");
+  path.setAttribute("marker-end",`url(#arrow-${type})`);
+  svg.appendChild(path);
+  const lbl = document.createElementNS("http://www.w3.org/2000/svg","text");
+  lbl.setAttribute("x",(x1+x2)/2+5); lbl.setAttribute("y",(y1+y2)/2);
+  lbl.setAttribute("class","edge-label"); lbl.textContent = label;
+  svg.appendChild(lbl);
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODAL LOGIC (defined early so node clicks can reference it)
+const overlay = document.getElementById("modal-overlay");
+const modalHeader = document.getElementById("modal-header");
+const modalBody = document.getElementById("modal-body");
+document.getElementById("modal-close").addEventListener("click", () => overlay.classList.remove("open"));
+overlay.addEventListener("click", e => { if (e.target === overlay) overlay.classList.remove("open"); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") overlay.classList.remove("open"); });
+
+function openModal(key) {
+  const m = managers[key];
+  const data = seasonData[key];
+  modalHeader.innerHTML = `
+    <div><span class="m-nation">${m.nation}</span><h2>${m.name}</h2></div>
+    <div class="m-en">${m.en} · ${m.born}</div>
+    <div class="m-style">${m.style}</div>
+  `;
+  modalHeader.style.borderColor = m.color + "55";
+  if (!data) {
+    modalBody.innerHTML = `<p class="m-no-data">シーズン詳細データなし</p>`;
+    overlay.classList.add("open"); return;
+  }
+  let html = "";
+  data.clubs.forEach(club => {
+    html += `<div class="m-club-block">
+      <div class="m-club-title" style="background:${m.color}22;color:${m.color}">${club.name}</div>
+      <table class="m-season-table">
+        <tr><th>シーズン</th><th>リーグ順位</th><th>CL</th><th>備考</th></tr>`;
+    club.seasons.forEach(s => {
+      const isChamp = s.pos === "1" || s.pos === "1(C)";
+      const clWin = s.cl.includes("優勝");
+      html += `<tr>
+        <td>${s.s}</td>
+        <td class="rank ${isChamp?"gold":s.pos==="2"?"silver":""}">${s.pos}位</td>
+        <td class="cl ${clWin?"trophy":""}">${s.cl}</td>
+        <td>${s.note}</td>
+      </tr>`;
+    });
+    html += `</table></div>`;
+  });
+  modalBody.innerHTML = html;
+  overlay.classList.add("open");
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// NODES
+function makeSVGText(x, y, text, opts={}) {
+  const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+  t.setAttribute("x", x); t.setAttribute("y", y);
+  t.setAttribute("font-size", opts.size || 10);
+  t.setAttribute("fill", opts.fill || "#e8eaf0");
+  t.setAttribute("font-family", opts.family || "'Noto Sans JP', sans-serif");
+  t.setAttribute("font-weight", opts.weight || "400");
+  t.setAttribute("text-anchor", opts.anchor || "start");
+  t.setAttribute("dominant-baseline", "middle");
+  t.setAttribute("pointer-events","none");
+  t.textContent = text;
+  return t;
+}
+
+Object.entries(managers).forEach(([key, m]) => {
+  const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+  g.setAttribute("class","node-group");
+  g.setAttribute("data-key", key);
+  g.style.cursor = "pointer";
+
+  const nodeW = getNodeW(m);
+  const rx = m.x - nodeW/2, ry = m.y;
+  const h = m._h;
+
+  // Glow
+  const glow = document.createElementNS("http://www.w3.org/2000/svg","rect");
+  glow.setAttribute("x",rx-4); glow.setAttribute("y",ry-4);
+  glow.setAttribute("width",nodeW+8); glow.setAttribute("height",h+8);
+  glow.setAttribute("rx","13"); glow.setAttribute("fill",m.color); glow.setAttribute("opacity","0.10");
+  g.appendChild(glow);
+
+  // Card
+  const card = document.createElementNS("http://www.w3.org/2000/svg","rect");
+  card.setAttribute("x",rx); card.setAttribute("y",ry);
+  card.setAttribute("width",nodeW); card.setAttribute("height",h);
+  card.setAttribute("rx","9");
+  card.setAttribute("fill","#131720");
+  card.setAttribute("stroke",m.color); card.setAttribute("stroke-width", key==="pep" ? "2.5" : "1.5");
+  // ペップ門下生は破線枠
+  const pepDisciples = ['arteta','domenec','maresca','flick','xabi','kompany','xavi'];
+  if (pepDisciples.includes(key)) {
+    card.setAttribute("stroke-dasharray","7 3");
+    card.setAttribute("stroke-width","2");
+  }
+  card.setAttribute("class","node-card");
+  g.appendChild(card);
+
+  // Header bg strip
+  const hdr = document.createElementNS("http://www.w3.org/2000/svg","rect");
+  hdr.setAttribute("x",rx); hdr.setAttribute("y",ry);
+  hdr.setAttribute("width",nodeW); hdr.setAttribute("height",NH_BASE);
+  hdr.setAttribute("rx","9");
+  hdr.setAttribute("fill",m.color); hdr.setAttribute("opacity","0.18");
+  g.appendChild(hdr);
+  // cover bottom corners of header strip
+  const hdrCover = document.createElementNS("http://www.w3.org/2000/svg","rect");
+  hdrCover.setAttribute("x",rx); hdrCover.setAttribute("y",ry+NH_BASE-8);
+  hdrCover.setAttribute("width",nodeW); hdrCover.setAttribute("height",8);
+  hdrCover.setAttribute("fill","#131720"); hdrCover.setAttribute("opacity","0.18");
+  g.appendChild(hdrCover);
+
+  // Flag
+  g.appendChild(makeSVGText(rx+8, ry+NH_BASE/2, m.nation, {size:14, fill:"#fff"}));
+  // Name
+  g.appendChild(makeSVGText(rx+30, ry+NH_BASE/2-6, m.name, {size:11.5, fill:"#ffffff", weight:"700"}));
+  // EN + born
+  g.appendChild(makeSVGText(rx+30, ry+NH_BASE/2+8, `${m.en}  ${m.born}`, {size:8.5, fill:"rgba(255,255,255,0.5)", weight:"300"}));
+
+  // Divider
+  let curY = ry + NH_BASE + 5;
+
+  function drawSection(title, rows, accentColor, isMgmt=false) {
+    if (rows.length === 0) return;
+    const secRect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    secRect.setAttribute("x", rx+6); secRect.setAttribute("y", curY);
+    secRect.setAttribute("width", nodeW-12); secRect.setAttribute("height", SECTION_H-1);
+    secRect.setAttribute("rx","3");
+    secRect.setAttribute("fill", accentColor); secRect.setAttribute("opacity","0.22");
+    g.appendChild(secRect);
+    const secLbl = makeSVGText(rx+10, curY+(SECTION_H-1)/2, title, {size:8, fill:accentColor, weight:"700"});
+    g.appendChild(secLbl);
+    curY += SECTION_H + 2;
+
+    rows.forEach(row => {
+      const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      dot.setAttribute("cx", rx+12); dot.setAttribute("cy", curY + ROW_H/2);
+      dot.setAttribute("r","2.5"); dot.setAttribute("fill", accentColor); dot.setAttribute("opacity","0.7");
+      g.appendChild(dot);
+      const isNational = /代表|National|national/.test(row.team);
+      g.appendChild(makeSVGText(rx+20, curY+ROW_H/2, row.team, {size:9, fill: isNational ? "#4ade80" : "#d1d5db"}));
+      g.appendChild(makeSVGText(rx+nodeW-6, curY+ROW_H/2, row.years, {size:8, fill:"#6b7280", anchor:"end"}));
+      curY += ROW_H + ROW_GAP;
+
+      if (isMgmt && (row.trophies || row.clWin)) {
+        let trophyText = "";
+        let trophyColor = "#f59e0b";
+        let useGlow = false;
+
+        if (row.clWin && row.clNote) {
+          const badgeLabel = "★ CL優勝 " + row.clNote + (row.trophies ? "  " + row.trophies : "");
+          // 赤背景
+          const clBg = document.createElementNS("http://www.w3.org/2000/svg","rect");
+          clBg.setAttribute("x", rx+7); clBg.setAttribute("y", curY+1);
+          clBg.setAttribute("width", nodeW-14); clBg.setAttribute("height", TROPHY_H-2);
+          clBg.setAttribute("rx","3"); clBg.setAttribute("fill","#bb0000");
+          clBg.setAttribute("opacity","0.9"); clBg.setAttribute("pointer-events","none");
+          clBg.setAttribute("filter","url(#clGlow)");
+          g.appendChild(clBg);
+          // 白テキスト
+          const clBadge = document.createElementNS("http://www.w3.org/2000/svg","text");
+          clBadge.setAttribute("x", rx + nodeW/2);
+          clBadge.setAttribute("y", curY + TROPHY_H/2);
+          clBadge.setAttribute("font-size","8.5");
+          clBadge.setAttribute("fill","#ffffff");
+          clBadge.setAttribute("font-family","'Noto Sans JP', sans-serif");
+          clBadge.setAttribute("font-weight","900");
+          clBadge.setAttribute("text-anchor","middle");
+          clBadge.setAttribute("dominant-baseline","middle");
+          clBadge.setAttribute("pointer-events","none");
+          clBadge.textContent = badgeLabel;
+          g.appendChild(clBadge);
+        } else if (row.trophies) {
+          g.appendChild(makeSVGText(rx+22, curY+TROPHY_H/2, "🏆 " + row.trophies, {size:7.5, fill:"#f59e0b", weight:"700"}));
+        }
+        curY += TROPHY_H;
+      }
+    });
+    curY += 3;
+  }
+
+  drawSection("📋 コーチ歴", m.coaching, "#60a5fa", false);
+  drawSection("📅 監督歴",  m.managing, m.color, true);
+
+  // Bottom accent bar
+  const bar = document.createElementNS("http://www.w3.org/2000/svg","rect");
+  bar.setAttribute("x", rx+10); bar.setAttribute("y", ry+h-4);
+  bar.setAttribute("width", nodeW-20); bar.setAttribute("height","3");
+  bar.setAttribute("rx","2"); bar.setAttribute("fill", m.color); bar.setAttribute("opacity","0.7");
+  g.appendChild(bar);
+
+  svg.appendChild(g);
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PAN & ZOOM  ── CSS transform方式（滑らか）
+const canvas = document.getElementById("canvas");
+
+const INIT_SCALE = 0.52;
+const PEP_X = managers.pep.x;
+const PEP_Y = managers.pep.y + managers.pep._h / 2;
+const MIN_SCALE = 0.12, MAX_SCALE = 3.0;
+
+let scale = INIT_SCALE;
+let tx = 0, ty = 0;
+
+function applyTransform() {
+  svg.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  svg.style.transformOrigin = "0 0";
+}
+
+function centerOnPep() {
+  const cw = canvas.clientWidth  || window.innerWidth;
+  const ch = canvas.clientHeight || (window.innerHeight - 130);
+  tx = cw / 2 - PEP_X * scale;
+  ty = ch / 2 - PEP_Y * scale;
+}
+
+requestAnimationFrame(() => { centerOnPep(); applyTransform(); });
+
+// ── Mouse drag ──
+let mdDown = false, mdMoved = false, mdLastX = 0, mdLastY = 0;
+
+canvas.addEventListener("mousedown", e => {
+  if (e.button !== 0) return;
+  mdDown = true; mdMoved = false;
+  mdLastX = e.clientX; mdLastY = e.clientY;
+  canvas.style.cursor = "grabbing";
+  e.preventDefault();
+});
+window.addEventListener("mousemove", e => {
+  if (!mdDown) return;
+  const dx = e.clientX - mdLastX, dy = e.clientY - mdLastY;
+  if (Math.abs(dx) + Math.abs(dy) > 3) mdMoved = true;
+  tx += dx; ty += dy;
+  mdLastX = e.clientX; mdLastY = e.clientY;
+  applyTransform();
+});
+window.addEventListener("mouseup", () => {
+  mdDown = false;
+  canvas.style.cursor = "grab";
+});
+
+// ── Mouse wheel zoom ──
+canvas.addEventListener("wheel", e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+  const ns = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
+  tx = mx - (mx - tx) * (ns / scale);
+  ty = my - (my - ty) * (ns / scale);
+  scale = ns;
+  applyTransform();
+}, { passive: false });
+
+// ── Touch: 1本指パン + 2本指ピンチ ──
+let t1x = 0, t1y = 0;          // 前フレームの指1位置
+let pinchDist = 0;              // 前フレームのピンチ距離
+let pinchMx = 0, pinchMy = 0;  // 前フレームのピンチ中点
+
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    t1x = e.touches[0].clientX;
+    t1y = e.touches[0].clientY;
+    pinchDist = 0;
+  } else if (e.touches.length >= 2) {
+    const a = e.touches[0], b = e.touches[1];
+    pinchDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    pinchMx = (a.clientX + b.clientX) / 2;
+    pinchMy = (a.clientY + b.clientY) / 2;
+  }
+}, { passive: false });
+
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    const cx = e.touches[0].clientX, cy = e.touches[0].clientY;
+    tx += cx - t1x;
+    ty += cy - t1y;
+    t1x = cx; t1y = cy;
+    applyTransform();
+  } else if (e.touches.length >= 2) {
+    const a = e.touches[0], b = e.touches[1];
+    const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+    const mx = (a.clientX + b.clientX) / 2;
+    const my = (a.clientY + b.clientY) / 2;
+    const rect = canvas.getBoundingClientRect();
+    const px = mx - rect.left, py = my - rect.top;
+
+    // ズーム
+    if (pinchDist > 0) {
+      const factor = dist / pinchDist;
+      const ns = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale * factor));
+      tx = px - (px - tx) * (ns / scale);
+      ty = py - (py - ty) * (ns / scale);
+      scale = ns;
+    }
+    // パン（中点の移動）
+    tx += mx - pinchMx;
+    ty += my - pinchMy;
+
+    pinchDist = dist;
+    pinchMx = mx; pinchMy = my;
+    applyTransform();
+  }
+}, { passive: false });
+
+canvas.addEventListener("touchend", e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    // 2本指→1本指に戻った時、その指を再初期化
+    t1x = e.touches[0].clientX;
+    t1y = e.touches[0].clientY;
+    pinchDist = 0;
+  } else if (e.touches.length === 0) {
+    pinchDist = 0;
+  }
+}, { passive: false });
+
+// ── Zoom buttons ──
+document.getElementById("zoomIn").addEventListener("click", () => {
+  const cx = canvas.clientWidth/2, cy = canvas.clientHeight/2;
+  const ns = Math.min(MAX_SCALE, scale * 1.35);
+  tx = cx - (cx - tx) * (ns / scale);
+  ty = cy - (cy - ty) * (ns / scale);
+  scale = ns; applyTransform();
+});
+document.getElementById("zoomOut").addEventListener("click", () => {
+  const cx = canvas.clientWidth/2, cy = canvas.clientHeight/2;
+  const ns = Math.max(MIN_SCALE, scale / 1.35);
+  tx = cx - (cx - tx) * (ns / scale);
+  ty = cy - (cy - ty) * (ns / scale);
+  scale = ns; applyTransform();
+});
+document.getElementById("zoomReset").addEventListener("click", () => {
+  scale = INIT_SCALE; centerOnPep(); applyTransform();
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// LEGEND TOGGLE
+function toggleLegend() {
+  const leg = document.getElementById('legend');
+  const tog = document.getElementById('legend-toggle');
+  const open = leg.classList.toggle('collapsed');
+  tog.classList.toggle('collapsed');
+  tog.firstChild.nodeValue = open ? '凡例を表示' : '凡例を隠す';
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TAB SWITCH
+function switchTab(tab) {
+  const isTree = tab === 'tree';
+  document.getElementById('page-tree').classList.toggle('hidden', !isTree);
+  document.getElementById('page-stats').classList.toggle('active', !isTree);
+  document.getElementById('tab-tree').classList.toggle('active', isTree);
+  document.getElementById('tab-stats').classList.toggle('active', !isTree);
+  if (!isTree && !document.getElementById('page-stats').dataset.built) {
+    buildStats();
+    document.getElementById('page-stats').dataset.built = '1';
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STATS DATA
+const statsData = [
+  { key:"rinus",   name:"リヌス・ミケルス",    en:"Rinus Michels",       flag:"🇳🇱", born:"1928–2005", mgrStart:1965, color:"#2ecc71", wp:61, ppg:1.82, matches:280, clWins:1, clRunnerUp:0, status:"retired", statusLabel:"🪦 故人",
+    style:"トータルフットボールの父。ポジションの流動的交換を発明",
+    clubs:[
+      { name:"アヤックス (1965–71, 75–76)", seasons:[
+        {s:"1965-66",pos:"1",cl:"—",note:"蘭L優勝"},
+        {s:"1966-67",pos:"1",cl:"—",note:"蘭L優勝"},
+        {s:"1968-69",pos:"1",cl:"決勝敗退",note:"蘭L優勝"},
+        {s:"1970-71",pos:"1",cl:"優勝🏆",note:"蘭L優勝"},
+      ]},
+      { name:"バルセロナ (1971–75, 76–78)", seasons:[
+        {s:"1973-74",pos:"1",cl:"—",note:"LaLiga優勝"},
+      ]},
+      { name:"オランダ代表 (1974, 84–92)", seasons:[
+        {s:"1974",pos:"—",cl:"—",note:"W杯準優勝"},
+        {s:"1988",pos:"—",cl:"—",note:"EURO優勝🏆"},
+      ]},
+    ]
+  },
+  { key:"ferguson", name:"アレックス・ファーガソン", en:"Sir Alex Ferguson", flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿", born:"1941–", mgrStart:1974, color:"#64748b", wp:58, ppg:1.98, matches:2155, clWins:2, clRunnerUp:1, status:"retired", statusLabel:"引退",
+    style:"強靭な組織力と若手育成。マンU 26年で38タイトル",
+    clubs:[
+      { name:"アバディーン (1978–86)", ppg:2.04, seasons:[
+        {s:"1979-80",pos:"1",cl:"—",note:"蘇リーグ優勝"},
+        {s:"1982-83",pos:"3",cl:"—",note:"CWC優勝🏆"},
+        {s:"1983-84",pos:"1",cl:"—",note:"蘇リーグ優勝"},
+        {s:"1984-85",pos:"1",cl:"—",note:"蘇リーグ優勝"},
+      ]},
+      { name:"マンチェスターU (1986–2013)", ppg:2.17, seasons:[
+        {s:"1992-93",pos:"1",ppg:2.07,cl:"—",note:"初PL優勝🏆"},
+        {s:"1993-94",pos:"1",ppg:2.19,cl:"準々決勝",note:"PL+FAC ダブル"},
+        {s:"1995-96",pos:"1",ppg:2.18,cl:"準々決勝",note:"PL+FAC ダブル"},
+        {s:"1996-97",pos:"1",ppg:2.03,cl:"準決勝",note:"PL優勝"},
+        {s:"1998-99",pos:"1",ppg:2.13,cl:"優勝🏆",note:"歴史的トレブル"},
+        {s:"1999-00",pos:"1",ppg:2.39,cl:"準々決勝",note:"PL優勝"},
+        {s:"2000-01",pos:"1",ppg:2.18,cl:"準々決勝",note:"PL優勝"},
+        {s:"2002-03",pos:"1",ppg:2.18,cl:"準々決勝",note:"PL優勝"},
+        {s:"2006-07",pos:"1",ppg:2.34,cl:"準決勝",note:"PL優勝"},
+        {s:"2007-08",pos:"1",ppg:2.34,cl:"優勝🏆",note:"PL+CL ダブル"},
+        {s:"2008-09",pos:"1",ppg:2.50,cl:"決勝敗退",note:"PL優勝"},
+        {s:"2010-11",pos:"1",ppg:2.21,cl:"決勝敗退",note:"PL優勝"},
+        {s:"2012-13",pos:"1",ppg:2.39,cl:"R16",note:"PL優勝（最終季）"},
+      ]},
+    ]
+  },
+  { key:"wenger", name:"アーセン・ベンゲル", en:"Arsène Wenger", flag:"🇫🇷", born:"1949–", mgrStart:1984, color:"#64748b", wp:57, ppg:1.96, matches:1235, clWins:0, clRunnerUp:0, status:"retired", statusLabel:"FIFA要職",
+    style:"科学的トレーニング革命。攻撃的ポゼッション。アーセナル22年",
+    clubs:[
+      { name:"ASモナコ (1987–94)", seasons:[
+        {s:"1987-88",pos:"1",cl:"—",note:"L1優勝"},
+        {s:"1990-91",pos:"3",cl:"準決勝",note:"仏カップ優勝"},
+      ]},
+      { name:"名古屋グランパス (1995–96)", seasons:[
+        {s:"1995",pos:"10",cl:"—",note:"天皇杯優勝🏆"},
+      ]},
+      { name:"アーセナル (1996–2018)", ppg:1.96, seasons:[
+        {s:"1997-98",pos:"1",ppg:2.16,cl:"—",note:"PL+FAC ダブル"},
+        {s:"2001-02",pos:"1",ppg:2.21,cl:"準々決勝",note:"PL+FAC ダブル"},
+        {s:"2002-03",pos:"2",cl:"準々決勝",note:"FAC優勝"},
+        {s:"2003-04",pos:"1",ppg:2.37,cl:"準々決勝",note:"無敗優勝🏆 26勝12分"},
+        {s:"2004-05",pos:"2",cl:"R16",note:"FAC優勝"},
+        {s:"2005-06",pos:"4",cl:"決勝敗退",note:""},
+        {s:"2013-14",pos:"4",cl:"R16",note:"FAC優勝"},
+        {s:"2014-15",pos:"3",cl:"R16",note:"FAC優勝"},
+        {s:"2016-17",pos:"5",cl:"R16",note:"FAC優勝"},
+      ]},
+    ]
+  },
+  { key:"sacchi", name:"アリゴ・サッキ", en:"Arrigo Sacchi", flag:"🇮🇹", born:"1946–", mgrStart:1985, color:"#3b82f6", wp:62, ppg:1.95, matches:210, clWins:2, clRunnerUp:0, status:"retired", statusLabel:"引退",
+    style:"高DFライン・プレッシングの体系化。ゾーンの礎",
+    clubs:[
+      { name:"ACミラン (1987–91)", seasons:[
+        {s:"1987-88",pos:"1",cl:"準決勝",note:"セリエA優勝"},
+        {s:"1988-89",pos:"3",cl:"優勝🏆",note:"CL初制覇"},
+        {s:"1989-90",pos:"2",cl:"優勝🏆",note:"CL連覇"},
+        {s:"1990-91",pos:"1",cl:"準決勝",note:"セリエA優勝"},
+      ]},
+      { name:"イタリア代表 (1991–96)", seasons:[
+        {s:"1994",pos:"—",cl:"—",note:"W杯準優勝（PK戦）"},
+      ]},
+    ]
+  },
+  { key:"cruyff", name:"ヨハン・クライフ", en:"Johan Cruyff", flag:"🇳🇱", born:"1947–2016", mgrStart:1985, color:"#22c55e", wp:65, ppg:2.05, matches:340, clWins:1, clRunnerUp:1, status:"retired", statusLabel:"🪦 故人",
+    style:"4-3-3 ポゼッション美学。バルサ・フィロソフィーの確立者",
+    clubs:[
+      { name:"アヤックス (1985–88)", seasons:[
+        {s:"1985-86",pos:"1",cl:"—",note:"蘭L+蘭C"},
+        {s:"1986-87",pos:"2",cl:"—",note:"蘭C優勝"},
+      ]},
+      { name:"バルセロナ (1988–96)", seasons:[
+        {s:"1990-91",pos:"1",cl:"—",note:"LaLiga優勝"},
+        {s:"1991-92",pos:"2",cl:"優勝🏆",note:"初CL制覇"},
+        {s:"1992-93",pos:"1",cl:"決勝敗退",note:"LaLiga優勝"},
+        {s:"1993-94",pos:"1",cl:"準決勝",note:"LaLiga優勝"},
+        {s:"1994-95",pos:"1",cl:"準々決勝",note:"LaLiga優勝"},
+      ]},
+    ]
+  },
+  { key:"ranieri", name:"C・ラニエリ", en:"Claudio Ranieri", flag:"🇮🇹", born:"1951–", mgrStart:1988, color:"#64748b", wp:43, ppg:1.45, matches:980, clWins:0, clRunnerUp:0, status:"rest", statusLabel:"ローマFD",
+    style:"柔軟な戦術と人心掌握。レスター奇跡の5000-1",
+    clubs:[
+      { name:"フィオレンティーナ (1993–97)", seasons:[
+        {s:"1995-96",pos:"2",cl:"—",note:"伊カップ優勝"},
+      ]},
+      { name:"バレンシア (1997–99)", seasons:[
+        {s:"1998-99",pos:"4",cl:"準決勝",note:"Copa del Rey優勝"},
+      ]},
+      { name:"レスター・シティ (2015–17)", seasons:[
+        {s:"2015-16",pos:"1",cl:"—",note:"PL優勝🏆（5000-1）"},
+        {s:"2016-17",pos:"12",cl:"準々決勝",note:""},
+      ]},
+    ]
+  },
+  { key:"vanGaal", name:"L・ファン・ハール", en:"Louis van Gaal", flag:"🇳🇱", born:"1951–", mgrStart:1991, color:"#16a34a", wp:58, ppg:1.88, matches:650, clWins:1, clRunnerUp:0, status:"retired", statusLabel:"引退",
+    style:"ゾーナルプレス＋ポゼッション。多くの名将を育てた師匠",
+    clubs:[
+      { name:"アヤックス (1991–97)", seasons:[
+        {s:"1993-94",pos:"1",cl:"決勝敗退",note:"蘭L優勝"},
+        {s:"1994-95",pos:"1",cl:"優勝🏆",note:"蘭L+CL"},
+        {s:"1995-96",pos:"1",cl:"決勝敗退",note:"蘭L優勝"},
+        {s:"1996-97",pos:"4",cl:"準決勝",note:""},
+      ]},
+      { name:"バルセロナ (1997–2000)", seasons:[
+        {s:"1997-98",pos:"1",cl:"準決勝",note:"LaLiga優勝"},
+        {s:"1998-99",pos:"1",cl:"準決勝",note:"LaLiga優勝"},
+      ]},
+      { name:"バイエルン (2009–11)", seasons:[
+        {s:"2009-10",pos:"2",cl:"決勝敗退",note:""},
+        {s:"2010-11",pos:"1",cl:"準決勝",note:"ブンデス優勝"},
+      ]},
+    ]
+  },
+  { key:"capello", name:"ファビオ・カペッロ", en:"Fabio Capello", flag:"🇮🇹", born:"1946–", mgrStart:1991, color:"#2563eb", wp:62, ppg:2.0, matches:640, clWins:1, clRunnerUp:0, status:"retired", statusLabel:"引退",
+    style:"規律と守備ブロック。勝利至上主義",
+    clubs:[
+      { name:"ACミラン (1991–98)", seasons:[
+        {s:"1991-92",pos:"1",cl:"準々決勝",note:"セリエA優勝"},
+        {s:"1992-93",pos:"1",cl:"優勝🏆",note:"セリエA+CL"},
+        {s:"1993-94",pos:"1",cl:"決勝敗退",note:"セリエA優勝"},
+        {s:"1995-96",pos:"1",cl:"優勝🏆",note:"セリエA+CL"},
+        {s:"1997-98",pos:"1",cl:"—",note:"セリエA優勝"},
+      ]},
+      { name:"レアル・マドリード (1996–97, 06–07)", seasons:[
+        {s:"1996-97",pos:"1",cl:"準決勝",note:"LaLiga優勝"},
+        {s:"2006-07",pos:"1",cl:"R16",note:"LaLiga優勝"},
+      ]},
+      { name:"ローマ (1999–04)", seasons:[
+        {s:"2000-01",pos:"1",cl:"準々決勝",note:"セリエA優勝🏆"},
+      ]},
+    ]
+  },
+  { key:"ancelotti", name:"カルロ・アンチェロッティ", en:"Carlo Ancelotti", flag:"🇮🇹", born:"1959–", mgrStart:1996, color:"#60a5fa", wp:60, ppg:1.95, matches:1040, clWins:5, clRunnerUp:1, status:"active", statusLabel:"ブラジル代表",
+    style:"柔軟な3ラインと人心掌握。選手個性を最大化",
+    clubs:[
+      { name:"ACミラン (2001–09)", ppg:2.04, seasons:[
+        {s:"2001-02",pos:"4",cl:"優勝🏆",note:"CL制覇"},
+        {s:"2003-04",pos:"1",ppg:2.45,cl:"準決勝",note:"セリエA優勝"},
+        {s:"2006-07",pos:"4",cl:"優勝🏆",note:"CL制覇"},
+      ]},
+      { name:"チェルシー (2009–11)", seasons:[
+        {s:"2009-10",pos:"1",ppg:2.32,cl:"準々決勝",note:"PL+FAC ダブル"},
+      ]},
+      { name:"PSG (2011–13)", seasons:[
+        {s:"2012-13",pos:"1",cl:"準々決勝",note:"L1優勝"},
+      ]},
+      { name:"レアル・マドリード (2013–15, 21–)", ppg:2.32, seasons:[
+        {s:"2013-14",pos:"3",ppg:2.29,cl:"優勝🏆",note:"La Decima"},
+        {s:"2021-22",pos:"1",ppg:2.21,cl:"優勝🏆",note:"LaLiga+CL"},
+        {s:"2022-23",pos:"1",ppg:2.16,cl:"準決勝",note:"LaLiga優勝"},
+        {s:"2023-24",pos:"2",ppg:2.39,cl:"優勝🏆",note:"CL 4回目"},
+      ]},
+    ]
+  },
+  { key:"koeman", name:"ロナルド・クーマン", en:"Ronald Koeman", flag:"🇳🇱", born:"1963–", mgrStart:2000, color:"#4ade80", wp:49, ppg:1.66, matches:620, clWins:0, clRunnerUp:0, status:"active", statusLabel:"オランダ代表",
+    style:"バルサ哲学継承。堅守からのビルドアップ",
+    clubs:[
+      { name:"ベンフィカ (2005–06)", seasons:[
+        {s:"2004-05",pos:"1",cl:"—",note:"ポルトガルL優勝"},
+      ]},
+      { name:"フェイエノールト (2011–14)", seasons:[
+        {s:"2011-12",pos:"3",cl:"—",note:"蘭C優勝"},
+      ]},
+    ]
+  },
+  { key:"mourinho", name:"ジョゼ・モウリーニョ", en:"José Mourinho", flag:"🇵🇹", born:"1963–", mgrStart:2002, color:"#a3e635", wp:62, ppg:2.03, matches:880, clWins:2, clRunnerUp:0, status:"active", statusLabel:"ベンフィカ",
+    style:"低重心守備ブロック＋カウンター。心理戦の達人",
+    clubs:[
+      { name:"ポルト (2002–04)", ppg:2.42, seasons:[
+        {s:"2002-03",pos:"1",cl:"—",note:"ポルトガルL+UEFAカップ"},
+        {s:"2003-04",pos:"1",ppg:2.50,cl:"優勝🏆",note:"ポルトガルL+CL"},
+      ]},
+      { name:"チェルシー (2004–07, 13–15)", ppg:2.27, seasons:[
+        {s:"2004-05",pos:"1",ppg:2.50,cl:"準決勝",note:"PL優勝（勝点95）"},
+        {s:"2005-06",pos:"1",ppg:2.39,cl:"R16",note:"PL優勝"},
+        {s:"2014-15",pos:"1",ppg:2.34,cl:"準々決勝",note:"PL優勝"},
+      ]},
+      { name:"インテル (2008–10)", ppg:2.22, seasons:[
+        {s:"2008-09",pos:"1",cl:"準決勝",note:"セリエA優勝"},
+        {s:"2009-10",pos:"1",ppg:2.34,cl:"優勝🏆",note:"イタリア史上初トレブル"},
+      ]},
+      { name:"レアル・マドリード (2010–13)", ppg:2.50, seasons:[
+        {s:"2011-12",pos:"1",ppg:2.63,cl:"準決勝",note:"LaLiga優勝（勝点100）"},
+      ]},
+    ]
+  },
+  { key:"klopp", name:"ユルゲン・クロップ", en:"Jürgen Klopp", flag:"🇩🇪", born:"1967–", mgrStart:2001, color:"#ef4444", wp:57, ppg:1.92, matches:820, clWins:1, clRunnerUp:3, status:"rest", statusLabel:"レッドブル・グローバルヘッド",
+    style:"ゲーゲンプレッシング。激烈守備から即攻への昇華",
+    clubs:[
+      { name:"ドルトムント (2008–15)", ppg:1.96, seasons:[
+        {s:"2010-11",pos:"1",ppg:2.21,cl:"—",note:"ブンデス優勝🏆"},
+        {s:"2011-12",pos:"1",ppg:2.41,cl:"グループ敗退",note:"ブンデス連覇"},
+        {s:"2012-13",pos:"2",ppg:1.97,cl:"決勝敗退",note:""},
+        {s:"2013-14",pos:"2",ppg:1.97,cl:"準々決勝",note:""},
+        {s:"2014-15",pos:"7",ppg:1.29,cl:"—",note:""},
+      ]},
+      { name:"リバプール (2015–24)", ppg:2.13, seasons:[
+        {s:"2015-16",pos:"8",cl:"—",note:"EL決勝敗退"},
+        {s:"2016-17",pos:"4",cl:"—",note:""},
+        {s:"2017-18",pos:"4",cl:"決勝敗退",note:""},
+        {s:"2018-19",pos:"2",ppg:2.55,cl:"優勝🏆",note:"CL制覇（97pt）"},
+        {s:"2019-20",pos:"1",ppg:2.61,cl:"R16",note:"PL優勝（99pt）🏆"},
+        {s:"2020-21",pos:"3",ppg:1.74,cl:"準々決勝",note:""},
+        {s:"2021-22",pos:"2",ppg:2.42,cl:"決勝敗退",note:"FAC+LC 国内2冠"},
+        {s:"2022-23",pos:"5",ppg:1.79,cl:"R16",note:""},
+        {s:"2023-24",pos:"3",ppg:2.13,cl:"R16",note:""},
+      ]},
+    ]
+  },
+  { key:"simone", name:"D・シメオネ", en:"Diego Simeone", flag:"🇦🇷", born:"1970–", mgrStart:2006, color:"#f97316", wp:53, ppg:1.78, matches:640, clWins:0, clRunnerUp:2, status:"active", statusLabel:"アトレティコ",
+    style:"超コンパクト守備＋カウンター。情熱の鉄壁",
+    clubs:[
+      { name:"アトレティコ・マドリード (2011–)", ppg:2.08, seasons:[
+        {s:"2012-13",pos:"3",cl:"—",note:"EL優勝🏆"},
+        {s:"2013-14",pos:"1",ppg:2.45,cl:"決勝敗退",note:"LaLiga優勝🏆"},
+        {s:"2015-16",pos:"3",cl:"決勝敗退",note:""},
+        {s:"2016-17",pos:"3",ppg:2.00,cl:"準決勝",note:"EL優勝🏆"},
+        {s:"2017-18",pos:"2",cl:"準々決勝",note:"EL優勝🏆"},
+        {s:"2020-21",pos:"1",ppg:2.32,cl:"準々決勝",note:"LaLiga優勝🏆"},
+      ]},
+    ]
+  },
+  { key:"pep", name:"ペップ・グアルディオラ", en:"Pep Guardiola", flag:"🇪🇸", born:"1971–", mgrStart:2008, color:"#f59e0b", wp:72, ppg:2.35, matches:1000, clWins:3, clRunnerUp:1, status:"rest", statusLabel:"休息中",
+    style:"ポジショナルプレー・偽9番・ハイプレス。現代最高峰",
+    clubs:[
+      { name:"バルセロナ (2008–12)", ppg:2.36, seasons:[
+        {s:"2008-09",pos:"1",cl:"優勝🏆",note:"史上初トレブル"},
+        {s:"2009-10",pos:"1",ppg:2.58,cl:"準決勝",note:"LaLiga+Copa"},
+        {s:"2010-11",pos:"1",ppg:2.50,cl:"優勝🏆",note:"LaLiga+CL"},
+        {s:"2011-12",pos:"2",ppg:2.50,cl:"準決勝",note:"Copa優勝"},
+      ]},
+      { name:"バイエルン (2013–16)", ppg:2.55, seasons:[
+        {s:"2013-14",pos:"1",ppg:2.74,cl:"準決勝",note:"ブンデス最速優勝"},
+        {s:"2014-15",pos:"1",ppg:2.41,cl:"準決勝",note:"ブンデス+DFBポカール"},
+        {s:"2015-16",pos:"1",ppg:2.50,cl:"準決勝",note:"ブンデス優勝"},
+      ]},
+      { name:"マンチェスターC (2016–)", ppg:2.30, seasons:[
+        {s:"2016-17",pos:"3",cl:"R16",note:""},
+        {s:"2017-18",pos:"1",ppg:2.63,cl:"準々決勝",note:"PL最多100pt"},
+        {s:"2018-19",pos:"1",ppg:2.58,cl:"準々決勝",note:"国内4冠🏆"},
+        {s:"2019-20",pos:"2",ppg:2.21,cl:"準々決勝",note:""},
+        {s:"2020-21",pos:"1",ppg:2.32,cl:"決勝敗退",note:"PL優勝"},
+        {s:"2021-22",pos:"1",ppg:2.39,cl:"準決勝",note:"PL優勝"},
+        {s:"2022-23",pos:"1",ppg:2.39,cl:"優勝🏆",note:"英国史上初トレブル"},
+        {s:"2023-24",pos:"1",ppg:2.39,cl:"準々決勝",note:"PL4連覇"},
+        {s:"2024-25",pos:"6",ppg:1.74,cl:"準決勝",note:""},
+      ]},
+    ]
+  },
+  { key:"tuchel", name:"T・トゥヘル", en:"Thomas Tuchel", flag:"🇩🇪", born:"1973–", mgrStart:2009, color:"#f87171", wp:57, ppg:1.88, matches:580, clWins:1, clRunnerUp:0, status:"active", statusLabel:"イングランド代表",
+    style:"フレキシブルな戦術と緻密なセットプレー",
+    clubs:[
+      { name:"ドルトムント (2015–17)", seasons:[
+        {s:"2015-16",pos:"2",cl:"R16",note:""},
+        {s:"2016-17",pos:"3",cl:"準々決勝",note:"DFBポカール優勝"},
+      ]},
+      { name:"PSG (2018–20)", ppg:2.43, seasons:[
+        {s:"2018-19",pos:"1",cl:"準々決勝",note:"L1優勝"},
+        {s:"2019-20",pos:"1",cl:"決勝敗退",note:"L1優勝"},
+      ]},
+      { name:"チェルシー (2021–22)", ppg:2.03, seasons:[
+        {s:"2020-21",pos:"4",cl:"優勝🏆",note:"途中就任でCL制覇"},
+        {s:"2021-22",pos:"3",cl:"準決勝",note:""},
+      ]},
+    ]
+  },
+  { key:"tenHag", name:"E・テン・ハフ", en:"Erik ten Hag", flag:"🇳🇱", born:"1970–", mgrStart:2012, color:"#a855f7", wp:56, ppg:1.82, matches:440, clWins:0, clRunnerUp:0, status:"active", statusLabel:"レバークーゼン",
+    style:"アヤックス仕込みのポゼッション＋プレス。Mini Pep",
+    clubs:[
+      { name:"アヤックス (2017–22)", seasons:[
+        {s:"2018-19",pos:"1",cl:"準決勝",note:"蘭L+CLベスト4🏆"},
+        {s:"2019-20",pos:"1",cl:"—",note:"蘭L優勝"},
+        {s:"2020-21",pos:"1",cl:"R16",note:"蘭L+蘭C"},
+        {s:"2021-22",pos:"1",cl:"R16",note:"蘭L+蘭C"},
+      ]},
+      { name:"マンチェスターU (2022–24)", seasons:[
+        {s:"2022-23",pos:"3",cl:"—",note:"FAC優勝🏆"},
+        {s:"2023-24",pos:"8",cl:"グループ敗退",note:""},
+      ]},
+    ]
+  },
+  { key:"nagelsmann", name:"ナーゲルスマン", en:"Julian Nagelsmann", flag:"🇩🇪", born:"1987–", mgrStart:2016, color:"#e879f9", wp:57, ppg:1.85, matches:320, clWins:0, clRunnerUp:0, status:"active", statusLabel:"ドイツ代表",
+    style:"戦術的多様性と若さ。革新的フォーメーション",
+    clubs:[
+      { name:"RBライプツィヒ (2019–21)", seasons:[
+        {s:"2019-20",pos:"3",cl:"準決勝",note:""},
+        {s:"2020-21",pos:"2",cl:"準々決勝",note:"DFBポカール優勝"},
+      ]},
+      { name:"バイエルン (2021–23)", seasons:[
+        {s:"2021-22",pos:"1",cl:"準々決勝",note:"ブンデス優勝"},
+        {s:"2022-23",pos:"1",cl:"準々決勝",note:"ブンデス優勝（途中解任）"},
+      ]},
+    ]
+  },
+  { key:"flick", name:"ハンジ・フリック", en:"Hansi Flick", flag:"🇩🇪", born:"1965–", mgrStart:2019, color:"#fbbf24", wp:70, ppg:2.18, matches:180, clWins:1, clRunnerUp:0, status:"active", statusLabel:"バルセロナ",
+    style:"超ハイプレス＋縦に速い攻撃。CL制覇",
+    clubs:[
+      { name:"バイエルン (2019–21)", seasons:[
+        {s:"2019-20",pos:"1",cl:"優勝🏆",note:"歴史的6冠"},
+        {s:"2020-21",pos:"1",cl:"準決勝",note:"ブンデス優勝"},
+      ]},
+      { name:"バルセロナ (2024–)", seasons:[
+        {s:"2024-25",pos:"1",cl:"準決勝",note:"LaLiga優勝🏆"},
+      ]},
+    ]
+  },
+  { key:"arteta", name:"ミケル・アルテタ", en:"Mikel Arteta", flag:"🇪🇸", born:"1982–", mgrStart:2019, color:"#fbbf24", wp:56, ppg:1.82, matches:280, clWins:0, clRunnerUp:1, status:"active", statusLabel:"アーセナル",
+    style:"ポジショナル＋高強度プレス。アーセナル再建",
+    clubs:[
+      { name:"アーセナル (2019–)", ppg:1.92, seasons:[
+        {s:"2019-20",pos:"8",cl:"—",note:""},
+        {s:"2020-21",pos:"8",cl:"—",note:"FAC優勝"},
+        {s:"2021-22",pos:"5",cl:"—",note:""},
+        {s:"2022-23",pos:"2",ppg:2.32,cl:"—",note:""},
+        {s:"2023-24",pos:"2",ppg:2.34,cl:"R16",note:""},
+        {s:"2024-25",pos:"1",ppg:2.42,cl:"準々決勝",note:"PL優勝🏆"},
+        {s:"2025-26",pos:"—",cl:"準優勝",note:"CL初決勝もPK敗退(1-1 4-3 vs PSG)"},
+      ]},
+    ]
+  },
+  { key:"xavi", name:"シャビ・エルナンデス", en:"Xavi Hernández", flag:"🇪🇸", born:"1980–", mgrStart:2019, color:"#fb923c", wp:58, ppg:1.88, matches:180, clWins:0, clRunnerUp:0, status:"free", statusLabel:"フリー",
+    style:"クライフ・ペップ哲学の完全継承。ティキタカ",
+    clubs:[
+      { name:"バルセロナ (2021–24)", seasons:[
+        {s:"2021-22",pos:"2",cl:"グループ敗退",note:""},
+        {s:"2022-23",pos:"1",cl:"R16",note:"LaLiga優勝🏆"},
+        {s:"2023-24",pos:"2",cl:"準決勝",note:""},
+      ]},
+    ]
+  },
+  { key:"kompany", name:"V・コンパニ", en:"Vincent Kompany", flag:"🇧🇪", born:"1986–", mgrStart:2019, color:"#fb923c", wp:52, ppg:1.72, matches:160, clWins:0, clRunnerUp:0, status:"active", statusLabel:"バイエルン",
+    style:"ペップ哲学を体現したCB。守備組織＋ビルドアップ",
+    clubs:[
+      { name:"バーンリー (2022–23)", seasons:[
+        {s:"2022-23",pos:"1",cl:"—",note:"Championship優勝・昇格🏆"},
+      ]},
+      { name:"バイエルン (2023–24)", seasons:[
+        {s:"2023-24",pos:"3",cl:"準決勝",note:""},
+      ]},
+    ]
+  },
+  { key:"maresca", name:"E・マレスカ", en:"Enzo Maresca", flag:"🇮🇹", born:"1980–", mgrStart:2021, color:"#fbbf24", wp:57, ppg:1.84, matches:120, clWins:0, clRunnerUp:0, status:"free", statusLabel:"フリー",
+    style:"ペップ流ポゼッション。レスター昇格→チェルシー欧州制覇",
+    clubs:[
+      { name:"レスター・シティ (2023–24)", seasons:[
+        {s:"2023-24",pos:"1",cl:"—",note:"Championship優勝・昇格🏆"},
+      ]},
+      { name:"チェルシー (2024–26)", seasons:[
+        {s:"2024-25",pos:"5",cl:"—",note:"ECL優勝🏆 + CWC優勝🏆"},
+      ]},
+    ]
+  },
+  { key:"xabi", name:"シャビ・アロンソ", en:"Xabi Alonso", flag:"🇪🇸", born:"1981–", mgrStart:2022, color:"#fb923c", wp:63, ppg:2.02, matches:140, clWins:0, clRunnerUp:0, status:"active", statusLabel:"バイエルン",
+    style:"ポゼッション＋縦に鋭い展開。不敗優勝の革命",
+    clubs:[
+      { name:"バイヤーレバークーゼン (2022–25)", ppg:2.02, seasons:[
+        {s:"2022-23",pos:"6",cl:"—",note:""},
+        {s:"2023-24",pos:"1",ppg:2.62,cl:"準決勝",note:"不敗ブンデス優勝🏆（51戦無敗）"},
+        {s:"2024-25",pos:"3",cl:"準々決勝",note:""},
+      ]},
+    ]
+  },
+,
+  { key:"zidane", name:"ジネディーヌ・ジダン", en:"Zinedine Zidane", flag:"🇫🇷", born:"1972–", mgrStart:2016, color:"#64748b", wp:67, ppg:2.12, matches:263, clWins:3, clRunnerUp:0, status:"free", statusLabel:"フリー",
+    style:"選手個性の最大化とモチベーション管理。CL3連覇の奇跡",
+    clubs:[
+      { name:"レアル・マドリード (2016–18, 19–21)", seasons:[
+        {s:"2015-16",pos:"2",cl:"優勝🏆",note:"CL制覇（途中就任）"},
+        {s:"2016-17",pos:"1",cl:"優勝🏆",note:"LaLiga+CL連覇"},
+        {s:"2017-18",pos:"3",cl:"優勝🏆",note:"CL3連覇（史上初）"},
+        {s:"2019-20",pos:"1",cl:"R16",note:"LaLiga優勝"},
+        {s:"2020-21",pos:"2",cl:"準決勝",note:""},
+      ]},
+    ]
+  },
+  { key:"luisenrique", name:"ルイス・エンリケ", en:"Luis Enrique", flag:"🇪🇸", born:"1970–", mgrStart:2008, color:"#22c55e", wp:61, ppg:1.98, matches:520, clWins:3, clRunnerUp:0, status:"active", statusLabel:"PSG",
+    style:"クライフ哲学継承のポゼッション＋縦への速さ。バルサトレブル",
+    clubs:[
+      { name:"バルセロナ (2014–17)", seasons:[
+        {s:"2014-15",pos:"1",cl:"優勝🏆",note:"トレブル（LaLiga+Copa+CL）"},
+        {s:"2015-16",pos:"1",cl:"準決勝",note:"LaLiga+Copa"},
+        {s:"2016-17",pos:"2",cl:"準々決勝",note:"Copa優勝"},
+      ]},
+      { name:"スペイン代表 (2018–22)", seasons:[
+        {s:"2020",pos:"—",cl:"—",note:"EURO2020 4強"},
+        {s:"2022",pos:"—",cl:"—",note:"W杯 8強"},
+      ]},
+      { name:"PSG (2023–)", seasons:[
+        {s:"2023-24",pos:"1",cl:"準決勝",note:"L1優勝"},
+        {s:"2024-25",pos:"2",cl:"優勝🏆",note:"CL初制覇🏆"},
+        {s:"2025-26",pos:"1",cl:"優勝🏆",note:"CL連覇🏆（PK4-3 vsアーセナル）"},
+      ]},
+    ]
+  }
+,
+  { key:"delbosque", name:"V・デル・ボスケ", en:"Vicente del Bosque", flag:"🇪🇸", born:"1950–", mgrStart:1999, color:"#16a34a", wp:63, ppg:2.01, matches:480, clWins:2, clRunnerUp:0, status:"retired", statusLabel:"引退",
+    style:"クライフ哲学ベースの国代表版ポゼッション。3大会連続制覇",
+    clubs:[
+      { name:"レアル・マドリード (1999–2003)", seasons:[
+        {s:"1999-00",pos:"1",cl:"優勝🏆",note:"LaLiga+CL"},
+        {s:"2001-02",pos:"3",cl:"優勝🏆",note:"CL制覇"},
+      ]},
+      { name:"スペイン代表 (2008–16)", seasons:[
+        {s:"2008",pos:"—",cl:"—",note:"EURO優勝🏆"},
+        {s:"2010",pos:"—",cl:"—",note:"W杯優勝🏆"},
+        {s:"2012",pos:"—",cl:"—",note:"EURO優勝🏆"},
+      ]},
+    ]
+  },
+  { key:"martinez_r", name:"R・マルティネス", en:"Roberto Martínez", flag:"🇪🇸", born:"1973–", mgrStart:2007, color:"#64748b", wp:47, ppg:1.6, matches:340, clWins:0, clRunnerUp:0, status:"active", statusLabel:"ポルトガル代表",
+    style:"データ分析重視のモダン戦術。ベルギーW杯3位",
+    clubs:[
+      { name:"ベルギー代表 (2016–22)", seasons:[
+        {s:"2018",pos:"—",cl:"—",note:"W杯3位🏆"},
+      ]},
+    ]
+  },
+  { key:"conte", name:"A・コンテ", en:"Antonio Conte", flag:"🇮🇹", born:"1969–", mgrStart:2009, color:"#2563eb", wp:61, ppg:1.98, matches:620, clWins:0, clRunnerUp:0, status:"active", statusLabel:"ナポリ",
+    style:"超強度プレス+堅守速攻。複数クラブで即タイトル",
+    clubs:[
+      { name:"ユベントス (2011–14)", seasons:[
+        {s:"2011-12",pos:"1",cl:"グループ敗退",note:"セリエA優勝"},
+        {s:"2012-13",pos:"1",cl:"準々決勝",note:"セリエA優勝"},
+        {s:"2013-14",pos:"1",cl:"R16",note:"セリエA優勝"},
+      ]},
+      { name:"チェルシー (2016–18)", seasons:[
+        {s:"2016-17",pos:"1",cl:"—",note:"PL優勝🏆"},
+        {s:"2017-18",pos:"5",cl:"R16",note:"FAC優勝"},
+      ]},
+      { name:"インテル (2019–21)", seasons:[
+        {s:"2019-20",pos:"2",cl:"決勝敗退",note:""},
+        {s:"2020-21",pos:"1",cl:"—",note:"セリエA優勝🏆"},
+      ]},
+    ]
+  },
+  { key:"allegri", name:"M・アッレグリ", en:"Massimiliano Allegri", flag:"🇮🇹", born:"1967–", mgrStart:2008, color:"#64748b", wp:60, ppg:1.96, matches:470, clWins:0, clRunnerUp:2, status:"active", statusLabel:"ACミラン",
+    style:"堅守カウンター+柔軟な試合運び。ユベントス5連覇",
+    clubs:[
+      { name:"ユベントス (2014–19)", seasons:[
+        {s:"2014-15",pos:"1",cl:"決勝敗退",note:"セリエA優勝"},
+        {s:"2015-16",pos:"1",cl:"決勝敗退",note:"セリエA優勝"},
+        {s:"2016-17",pos:"1",cl:"決勝敗退",note:"セリエA優勝"},
+        {s:"2017-18",pos:"1",cl:"準々決勝",note:"セリエA優勝"},
+        {s:"2018-19",pos:"1",cl:"準々決勝",note:"セリエA優勝"},
+      ]},
+    ]
+  },
+  { key:"deschamps", name:"D・デシャン", en:"Didier Deschamps", flag:"🇫🇷", born:"1968–", mgrStart:2012, color:"#64748b", wp:55, ppg:1.82, matches:620, clWins:0, clRunnerUp:0, status:"active", statusLabel:"フランス代表",
+    style:"組織力と結束力。フランス代表を黄金世代に再構築",
+    clubs:[
+      { name:"フランス代表 (2012–)", seasons:[
+        {s:"2014",pos:"—",cl:"—",note:"W杯準々決勝"},
+        {s:"2016",pos:"—",cl:"—",note:"EURO準優勝"},
+        {s:"2018",pos:"—",cl:"—",note:"W杯優勝🏆"},
+        {s:"2022",pos:"—",cl:"—",note:"W杯準優勝"},
+      ]},
+    ]
+  },
+  { key:"amorim", name:"R・アモリム", en:"Rúben Amorim", flag:"🇵🇹", born:"1985–", mgrStart:2020, color:"#64748b", wp:62, ppg:2.0, matches:180, clWins:0, clRunnerUp:0, status:"active", statusLabel:"マンチェスターU",
+    style:"独自の3-4-2-1哲学。スポルティングで革命、マンUへ",
+    clubs:[
+      { name:"スポルティングCP (2020–24)", seasons:[
+        {s:"2020-21",pos:"1",cl:"グループ敗退",note:"ポルトガルL優勝🏆"},
+        {s:"2023-24",pos:"1",cl:"R16",note:"ポルトガルL優勝🏆"},
+      ]},
+      { name:"マンチェスタU (2024–)", seasons:[
+        {s:"2024-25",pos:"14",cl:"EL準々決勝",note:""},
+      ]},
+    ]
+  }
+,
+  { key:"moriyasu", name:"森保 一", en:"Hajime Moriyasu", flag:"🇯🇵", born:"1968–", mgrStart:2012, color:"#64748b", wp:60, ppg:1.95, matches:280, clWins:0, clRunnerUp:0, status:"active", statusLabel:"日本代表",
+    style:"組織力・規律・選手個性の融合。日本代表を史上最強に",
+    clubs:[
+      { name:"日本代表 (2018–)", seasons:[
+        {s:"2019",pos:"—",cl:"—",note:"アジアカップ準優勝"},
+        {s:"2021",pos:"—",cl:"—",note:"東京五輪4位"},
+        {s:"2022",pos:"—",cl:"—",note:"W杯ベスト16（独・西を撃破）"},
+        {s:"2023",pos:"—",cl:"—",note:""},
+        {s:"2024",pos:"—",cl:"—",note:"W杯予選 圧勝でアジア最速突破"},
+        {s:"2025",pos:"—",cl:"—",note:"史上初ブラジル戦勝利🏆"},
+      ]},
+    ]
+  }
+];
+
+// 監督業スタート年順にソート
+statsData.sort((a, b) => a.mgrStart - b.mgrStart);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SORT
+let currentSort = 'mgrStart-asc';
+function sortStats(mode) {
+  currentSort = mode;
+  const sorters = {
+    'mgrStart-asc':  (a,b) => a.mgrStart - b.mgrStart,
+    'mgrStart-desc': (a,b) => b.mgrStart - a.mgrStart,
+    'born-asc':      (a,b) => parseInt(a.born) - parseInt(b.born),
+    'born-desc':     (a,b) => parseInt(b.born) - parseInt(a.born),
+    'ppg-desc':      (a,b) => b.ppg - a.ppg,
+    'ppg-asc':       (a,b) => a.ppg - b.ppg,
+    'wp-desc':       (a,b) => b.wp - a.wp,
+    'wp-asc':        (a,b) => a.wp - b.wp,
+    'cl-desc':       (a,b) => (b.clWins||0) - (a.clWins||0) || (b.clRunnerUp||0) - (a.clRunnerUp||0) || b.ppg - a.ppg,
+  };
+  statsData.sort(sorters[mode] || sorters['mgrStart-asc']);
+  // 並べ替えボタンUIの選択状態更新
+  document.querySelectorAll('.sort-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.sort === mode);
+  });
+  // リスト再構築
+  const c = document.getElementById('page-stats');
+  // ソートバー以外をクリア
+  const cards = c.querySelectorAll('.ac-card');
+  cards.forEach(card => card.remove());
+  buildStatsCards();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BUILD STATS PAGE
+function buildStats() {
+  const container = document.getElementById('page-stats');
+  // ソートバー
+  const sortBar = document.createElement('div');
+  sortBar.className = 'sort-bar';
+  sortBar.innerHTML = `
+    <span class="sort-label">並び替え:</span>
+    <button class="sort-btn active" data-sort="mgrStart-asc" onclick="sortStats('mgrStart-asc')">監督業 古い順</button>
+    <button class="sort-btn" data-sort="mgrStart-desc" onclick="sortStats('mgrStart-desc')">監督業 新しい順</button>
+    <button class="sort-btn" data-sort="born-asc" onclick="sortStats('born-asc')">年齢 高い順</button>
+    <button class="sort-btn" data-sort="born-desc" onclick="sortStats('born-desc')">年齢 低い順</button>
+    <button class="sort-btn" data-sort="ppg-desc" onclick="sortStats('ppg-desc')">PPG 高い順</button>
+    <button class="sort-btn" data-sort="wp-desc" onclick="sortStats('wp-desc')">勝率 高い順</button>
+    <button class="sort-btn cl-sort" data-sort="cl-desc" onclick="sortStats('cl-desc')">🏆 CL優勝数</button>
+  `;
+  container.appendChild(sortBar);
+  buildStatsCards();
+}
+
+function buildStatsCards() {
+  const container = document.getElementById('page-stats');
+  statsData.forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'ac-card';
+    card.style.setProperty('--ac-c', m.color);
+
+    // ヘッダー（常時表示）
+    const head = document.createElement('div');
+    head.className = 'ac-head';
+    const statusColors = {
+      active:  {bg:'#16a34a22', bd:'#16a34a', fg:'#4ade80', icon:'●'},
+      free:    {bg:'#3b82f622', bd:'#3b82f6', fg:'#60a5fa', icon:'○'},
+      rest:    {bg:'#f59e0b22', bd:'#f59e0b', fg:'#fbbf24', icon:'⏸'},
+      retired: {bg:'#64748b22', bd:'#64748b', fg:'#9ca3af', icon:'■'},
+    };
+    const sc = statusColors[m.status] || statusColors.retired;
+    head.innerHTML = `
+      <span class="ac-flag">${m.flag}</span>
+      <div class="ac-info">
+        <div class="ac-name-row">
+          <span class="ac-name">${m.name}</span>
+          <span class="ac-status" style="background:${sc.bg};border-color:${sc.bd};color:${sc.fg}">${sc.icon} ${m.statusLabel}</span>
+        </div>
+        <div class="ac-en">${m.en}</div>
+        <div class="ac-stats-row">
+          <span class="ac-stat-badge" style="background:${m.color}22;border-color:${m.color}55;color:${m.color}">勝率 ${m.wp}%</span>
+          <span class="ac-stat-badge" style="background:#1a1f2e;border-color:#2a3040;color:#a78bfa">PPG ${m.ppg}</span>
+          ${m.clWins > 0 ? `<span class="ac-stat-badge cl-badge" style="background:#cc000033;border-color:#cc0000;color:#ff4444;font-weight:900;text-shadow:0 0 6px #ff000066">🏆 CL×${m.clWins}</span>` : ''}
+          ${m.clRunnerUp > 0 ? `<span class="ac-stat-badge" style="background:#7c2d1222;border-color:#7c2d12;color:#fdba74">🥈 準優勝×${m.clRunnerUp}</span>` : ''}
+          <span class="ac-stat-badge" style="background:#1a1f2e;border-color:#2a3040;color:#6b7280">${m.matches}試</span>
+        </div>
+      </div>
+      <span class="ac-badge">${m.mgrStart}年〜</span>
+    `;
+
+    // ボディ（タップで表示）
+    const body = document.createElement('div');
+    body.className = 'ac-body';
+
+    const styleDiv = document.createElement('div');
+    styleDiv.className = 'ac-style';
+    styleDiv.textContent = m.style;
+    body.appendChild(styleDiv);
+
+    m.clubs.forEach(club => {
+      const block = document.createElement('div');
+      block.className = 'ac-club-block';
+
+      const title = document.createElement('div');
+      title.className = 'ac-club-name';
+      const isNat = /代表|National|national/.test(club.name);
+      title.style.cssText = isNat
+        ? `color:#4ade80;background:#4ade8022`
+        : `color:${m.color};background:${m.color}22`;
+      title.innerHTML = club.name + (club.ppg ? ` <span style="font-size:.65rem;color:#a78bfa;margin-left:6px;letter-spacing:0">PPG ${club.ppg}</span>` : '');
+      block.appendChild(title);
+
+      const table = document.createElement('table');
+      table.className = 'ac-table';
+      table.innerHTML = `<thead><tr><th>年</th><th>順位</th><th>PPG</th><th>CL</th><th>備考</th></tr></thead>`;
+      const tbody = document.createElement('tbody');
+
+      club.seasons.forEach(s => {
+        const tr = document.createElement('tr');
+        const p = s.pos;
+        const clWin = s.cl.includes('優勝');
+        tr.innerHTML = `
+          <td class="td-s">${s.s}</td>
+          <td class="td-p ${p==='1'||p==='1(C)'?'td-p1':p==='2'?'td-p2':p==='3'?'td-p3':''}">${p}位</td>
+          <td class="td-ppg">${s.ppg ? s.ppg : '—'}</td>
+          <td class="td-cl ${clWin?'w':''}">${s.cl}</td>
+          <td class="td-note">${s.note}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      block.appendChild(table);
+      body.appendChild(block);
+    });
+
+    card.appendChild(head);
+    card.appendChild(body);
+
+    // タップでアコーディオン開閉
+    head.addEventListener('click', () => {
+      const wasOpen = card.classList.contains('open');
+      card.classList.toggle('open', !wasOpen);
+      if (!wasOpen) {
+        setTimeout(() => card.scrollIntoView({behavior:'smooth', block:'nearest'}), 40);
+      }
+    });
+
+    container.appendChild(card);
+  });
+}
+
+</script>
+</body>
+</html>　これも追加して
